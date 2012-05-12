@@ -7,6 +7,11 @@
 
 /*
 
+ For more details, photos, wiring, instructions, see:
+
+    http://www.gammon.com.au/forum/?id=11638
+
+
  Copyright 2012 Nick Gammon.
  
  
@@ -380,6 +385,14 @@ void showProgress ()
   Serial.print (F("#"));  // progress bar
   }  // end of showProgress
   
+// clear entire temporary page to 0xFF in case we don't write to all of it 
+void clearPage ()
+{
+  unsigned int len = signatures [foundSig].pageSize;
+  for (int i = 0; i < len; i++)
+    writeFlash (i, 0xFF);
+}  // end of clearPage
+  
 // commit page to flash memory
 void commitPage (const unsigned long addr)
   {
@@ -395,8 +408,10 @@ void commitPage (const unsigned long addr)
   
   program (writeProgramMemory, highByte (addr >> 1), lowByte (addr >> 1));
   pollUntilReady (); 
-  }  // end of commitPage
   
+  clearPage();  // clear ready for next page full
+  }  // end of commitPage
+ 
 // write data to temporary buffer, ready for committing  
 void writeData (const unsigned long addr, const byte * pData, const int length)
   {
@@ -624,6 +639,7 @@ boolean readHexFile (const char * fName, const byte action)
       Serial.println (F("Erasing chip ..."));
       program (progamEnable, chipErase);   // erase it
       pollUntilReady (); 
+      clearPage();  // clear temporary page
       Serial.println (F("Writing flash ..."));
       break;      
     } // end of switch
