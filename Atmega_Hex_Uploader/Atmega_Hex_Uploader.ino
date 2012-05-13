@@ -1,9 +1,11 @@
 // Atmega hex file uploader (from SD card)
 // Author: Nick Gammon
 // Date: 11th May 2012
-// Version: 1.1
+// Version: 1.3     // NB update 'Version' variable below!
 
 // Version 1.1: Some code cleanups as suggested on the Arduino forum.
+// Version 1.2: Cleared temporary flash area to 0xFF before doing each page
+// Version 1.3: Added ability to read from flash and write to disk, also to erase flash
 
 /*
 
@@ -41,7 +43,7 @@
 // for SDFat library see: http://code.google.com/p/beta-lib/downloads/list
 #include <SdFat.h>
 
-const char Version [] = "1.1";
+const char Version [] = "1.3";
 
 // bit banged SPI pins
 const byte MSPIM_SCK = 4;  // port D bit 4
@@ -180,6 +182,7 @@ char name[MAX_FILENAME] = { 0 };  // current file name
 
 // get a line from serial (file name) 
 //  ignore spaces, tabs etc.
+//  forces to upper case
 void getline (char * buf, size_t bufsize)
 {
 byte i;
@@ -198,7 +201,7 @@ byte i;
         break;
       
       if (!isspace (c))  // ignore spaces, carriage-return etc.
-        buf [i++] = c;
+        buf [i++] = toupper (c);
       } // end if available
     }  // end of for
   buf [i] = 0;  // terminator
@@ -237,7 +240,7 @@ enum {
 };  // end of enum
 
 // which program instruction writes which fuse
-byte fuseCommands [4] = { writeLowFuseByte, writeHighFuseByte, writeExtendedFuseByte, writeLockByte };
+const byte fuseCommands [4] = { writeLowFuseByte, writeHighFuseByte, writeExtendedFuseByte, writeLockByte };
 
 // types of record in .hex file
 enum {
@@ -299,6 +302,9 @@ byte program (const byte b1, const byte b2 = 0, const byte b3 = 0, const byte b4
 // read a byte from flash memory
 byte readFlash (unsigned long addr)
   {
+  byte high = (addr & 1) ? 0x08 : 0;  // set if high byte wanted
+  addr >>= 1;  // turn into word address
+
   // set the extended (most significant) address byte if necessary
   byte MSB = (addr >> 16) & 0xFF;
   if (MSB != lastAddressMSB)
@@ -306,9 +312,7 @@ byte readFlash (unsigned long addr)
     program (loadExtendedAddressByte, 0, MSB); 
     lastAddressMSB = MSB;
     }  // end if different MSB
-     
-  byte high = (addr & 1) ? 0x08 : 0;  // set if high byte wanted
-  addr >>= 1;  // turn into word address
+
   return program (readProgramMemory | high, highByte (addr), lowByte (addr));
   } // end of readFlash
   
@@ -325,12 +329,8 @@ void showHex (const byte b, const boolean newline = false, const boolean show0x 
   {
   if (show0x)
     Serial.print (F("0x"));
-  // try to avoid using sprintf
-  char buf [4] = { ((b >> 4) & 0x0F) | '0', (b & 0x0F) | '0', ' ' , 0 };
-  if (buf [0] > '9')
-    buf [0] += 7;
-  if (buf [1] > '9')
-    buf [1] += 7;
+  char buf [4];
+  sprintf (buf, "%02X ", b);
   Serial.print (buf);
   if (newline)
     Serial.println ();
@@ -394,8 +394,10 @@ void clearPage ()
 }  // end of clearPage
   
 // commit page to flash memory
-void commitPage (const unsigned long addr)
+void commitPage (unsigned long addr)
   {
+  addr >>= 1;  // turn into word address
+  
   // set the extended (most significant) address byte if necessary
   byte MSB = (addr >> 16) & 0xFF;
   if (MSB != lastAddressMSB)
@@ -406,7 +408,7 @@ void commitPage (const unsigned long addr)
     
   showProgress ();
   
-  program (writeProgramMemory, highByte (addr >> 1), lowByte (addr >> 1));
+  program (writeProgramMemory, highByte (addr), lowByte (addr));
   pollUntilReady (); 
   
   clearPage();  // clear ready for next page full
@@ -773,6 +775,9 @@ void getSignature ()
       Serial.print (F("Flash memory size = "));
       Serial.print (signatures [j].flashSize, DEC);
       Serial.println (F(" bytes."));
+      
+      // make sure extended address is zero to match lastAddressMSB variable
+      program (loadExtendedAddressByte, 0, 0); 
       return;
       }  // end of signature found
     }  // end of for each signature
@@ -958,6 +963,221 @@ void setup ()
 
 char lastFileName [MAX_FILENAME] = { 0 };
 
+
+boolean chooseInputFile ()
+  {
+  Serial.println ();  
+  Serial.print (F("Choose disk file [ "));
+  Serial.print (lastFileName);
+  Serial.println (F(" ] ..."));
+  
+  getline (name, sizeof name);
+
+  // no name? use last one  
+  if (name [0] == 0)
+    memcpy (name, lastFileName, sizeof name);
+  
+  if (readHexFile(name, checkFile))
+    {
+    Serial.println (F("***********************************"));
+    return true;  // error, don't attempt to write
+    }
+  
+  // remember name for next time
+  memcpy (lastFileName, name, sizeof lastFileName);
+  
+  // check file would fit into device memory
+  if (highestAddress > signatures [foundSig].flashSize)
+    {
+    Serial.print (F("Highest address of 0x"));      
+    Serial.print (highestAddress, HEX); 
+    Serial.print (F(" exceeds available flash memory top 0x"));      
+    Serial.println (signatures [foundSig].flashSize, HEX); 
+    Serial.println (F("***********************************"));
+    return true; 
+    }
+  
+  // check start address makes sense
+  if (updateFuses (false))
+    {
+    Serial.println (F("***********************************"));
+    return true;
+    }
+  
+   return false;   
+  }  // end of chooseInputFile
+  
+void readFlashContents ()
+  {
+  progressBarCount = 0;
+  pagesize = signatures [foundSig].pageSize;
+  pagemask = ~(pagesize - 1);
+  oldPage = NO_PAGE;
+  byte lastMSBwritten = 0;
+    
+  while (true)
+    {
+    
+    Serial.println ();  
+    Serial.println (F("Choose file to save as: "));
+    
+    getline (name, sizeof name);
+    int len = strlen (name);
+      
+    if (len < 5 || strcmp (&name [len - 4], ".HEX") != 0)
+      {
+      Serial.println (F("File name must end in .HEX"));  
+      return;
+      }
+      
+    // if file doesn't exist, proceed
+    if (!sd.vwd()->exists (name))
+      break;
+      
+    Serial.print (F("File "));
+    Serial.print (name);    
+    Serial.println (F(" exists. Overwrite? Type 'YES' to confirm ..."));  
+  
+    getline (name, sizeof name);
+      
+    if (strcmp (name, "YES") == 0)
+      break;
+      
+    }  // end of checking if file exists
+    
+  SdFile myFile;
+
+  // open the file for writing
+  if (!myFile.open(name, O_WRITE | O_CREAT | O_TRUNC)) 
+    {
+    Serial.print (F("Could not open file "));
+    Serial.print (name);
+    Serial.println (F(" for writing."));
+    return;    
+    }
+
+  byte memBuf [16];
+  boolean allFF;
+  int i;
+  char linebuf [50];
+  byte sumCheck;
+  
+  Serial.println (F("Copying flash memory to SD card (disk) ..."));  
+    
+  for (unsigned long address = 0; address < signatures [foundSig].flashSize; address += sizeof memBuf)
+    {
+      
+    unsigned long thisPage = address & pagemask;
+    // page changed? show progress
+    if (thisPage != oldPage && oldPage != NO_PAGE)
+      showProgress ();
+    // now this is the current page
+    oldPage = thisPage;
+      
+    // don't write lines that are all 0xFF
+    allFF = true;
+    
+    for (i = 0; i < sizeof memBuf; i++)
+      {
+      memBuf [i] = readFlash (address + i); 
+      if (memBuf [i] != 0xFF)
+        allFF = false;
+      }  // end of reading 16 bytes
+    if (allFF)
+      continue;
+
+    byte MSB = address >> 16;
+    if (MSB != lastMSBwritten)
+      {
+      sumCheck = 2 + 2 + (MSB << 4);
+      sumCheck = ~sumCheck + 1;      
+      // hexExtendedSegmentAddressRecord (02)
+      sprintf (linebuf, ":02000002%02X00%02X\r\n", MSB << 4, sumCheck);    
+      myFile.print (linebuf);   
+      lastMSBwritten = MSB;
+      }  // end if different MSB
+      
+    sumCheck = 16 + lowByte (address) + highByte (address);
+    sprintf (linebuf, ":10%04X00", address & 0xFFFF);
+    for (i = 0; i < sizeof memBuf; i++)
+      {
+      sprintf (&linebuf [(i * 2) + 9] , "%02X",  memBuf [i]);
+      sumCheck += memBuf [i];
+      }  // end of reading 16 bytes
+  
+    // 2's complement
+    sumCheck = ~sumCheck + 1;
+    // append sumcheck
+    sprintf (&linebuf [(sizeof memBuf * 2) + 9] , "%02X\r\n",  sumCheck);
+         
+    myFile.clearWriteError ();
+    myFile.print (linebuf);   
+    if (myFile.getWriteError ())
+       {
+       Serial.println ();  // finish off progress bar
+       Serial.println (F("Error writing file."));
+       myFile.close ();
+       return; 
+       }   // end of an error
+       
+    }  // end of reading flash 
+  
+  Serial.println ();  // finish off progress bar
+  myFile.print (":00000001FF\r\n");    // end of file record
+  myFile.close ();  
+  // ensure written to disk
+  sd.vwd()->sync ();
+  Serial.print (F("File "));
+  Serial.print (name);
+  Serial.println (F(" saved."));
+  }  // end of readFlashContents
+  
+void writeFlashContents ()
+  {
+  if (chooseInputFile ())
+    return;  
+
+  // now commit to flash
+  readHexFile(name, writeToFlash);
+
+  // verify anyway
+  readHexFile(name, verifyFlash);
+
+  // now fix up fuses so we can boot    
+  updateFuses (true);
+    
+  }  // end of writeFlashContents
+  
+void verifyFlashContents ()
+  {
+  if (chooseInputFile ())
+    return;  
+    
+  // verify it
+  readHexFile(name, verifyFlash);
+  }  // end of verifyFlashContents
+  
+void eraseFlashContents ()
+  {
+  Serial.println (F("Erase all flash memory. ARE YOU SURE? Type 'YES' to confirm ..."));  
+
+  getline (name, sizeof name);
+    
+  if (strcmp (name, "YES") != 0)
+    {
+    Serial.println (F("Flash not erased."));  
+    return;
+    }
+    
+  Serial.println (F("Erasing chip ..."));
+  program (progamEnable, chipErase);   // erase it
+  pollUntilReady (); 
+
+  Serial.println (F("Flash memory erased."));
+    
+  }  // end of eraseFlashContents
+
+  
 //------------------------------------------------------------------------------
 //      LOOP
 //------------------------------------------------------------------------------
@@ -978,60 +1198,46 @@ void loop ()
       {}
     }  // end of no signature
 
-  Serial.println (F("---------"));  
-  Serial.print (F("Choose a file [ "));
-  Serial.print (lastFileName);
-  Serial.println (F(" ] ..."));
+ // ask for verify or write
+  Serial.println (F("Actions:"));
+  Serial.println (F(" [E] erase flash"));
+  Serial.println (F(" [R] read from flash (save to disk)"));
+  Serial.println (F(" [V] verify flash (compare to disk)"));
+  Serial.println (F(" [W] write to flash (read from disk)"));
+  Serial.println (F("Enter action:"));
   
-  getline (name, sizeof name);
-
-  // no name? use last one  
-  if (name [0] == 0)
-    memcpy (name, lastFileName, sizeof name);
+  // discard any old junk
+  while (Serial.available ())
+    Serial.read ();
   
-  if (readHexFile(name, checkFile))
-    {
-    Serial.println (F("***********************************"));
-    return;  // error, don't attempt to write
-    }
-  
-  // remember name for next time
-  memcpy (lastFileName, name, sizeof lastFileName);
-  
-  // check file would fit into device memory
-  if (highestAddress > signatures [foundSig].flashSize)
-    {
-    Serial.print (F("Highest address of 0x"));      
-    Serial.print (highestAddress, HEX); 
-    Serial.print (F(" exceeds available flash memory top 0x"));      
-    Serial.println (signatures [foundSig].flashSize, HEX); 
-    Serial.println (F("***********************************"));
-    return; 
-    }
-  
-  // check start address makes sense
-  if (updateFuses (false))
-    {
-    Serial.println (F("***********************************"));
-    return;
-    }
-  
-  // ask for verify or write
-  Serial.println (F("Type 'V' to verify, or 'G' to program the chip with this file ..."));
   char command;
   do
     {
     command = toupper (Serial.read ());
-    } while (command != 'G' && command != 'V');
+    } while (!isalpha (command));
 
-  // now commit to flash
-  if (command == 'G')
-    readHexFile(name, writeToFlash);
-  
-  // verify anyway
-  readHexFile(name, verifyFlash);
+  switch (command)
+    {
+    case 'R': 
+      readFlashContents (); 
+      break; 
+      
+    case 'W': 
+      writeFlashContents (); 
+      break; 
+      
+    case 'V': 
+      verifyFlashContents (); 
+      break; 
+      
+    case 'E': 
+      eraseFlashContents (); 
+      break; 
+    
+    default: 
+      Serial.println (F("Unknown command.")); 
+      break;
+    }  // end of switch on command
 
- if (command == 'G')
-    updateFuses (true);
 }  // end of loop
 
