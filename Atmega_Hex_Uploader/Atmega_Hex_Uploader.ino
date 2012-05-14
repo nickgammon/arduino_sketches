@@ -9,6 +9,7 @@
 // Version 1.4: Slowed down bit-bang SPI to make it more reliable on slower processors
 // Version 1.5: Fixed bug where file "YES" might be saved instead of the correct name
 //              Also corrected flash size for Atmega1284P.
+// Version 1.6: Echo user input
 
 /*
 
@@ -46,7 +47,7 @@
 // for SDFat library see: http://code.google.com/p/beta-lib/downloads/list
 #include <SdFat.h>
 
-const char Version [] = "1.5";
+const char Version [] = "1.6";
 
 // bit banged SPI pins
 const byte MSPIM_SCK = 4;  // port D bit 4
@@ -201,7 +202,10 @@ byte i;
       int c = Serial.read ();
       
       if (c == '\n')  // newline terminates
+        {
+        Serial.println (buf);  // echo what they typed
         break;
+        }
       
       if (!isspace (c))  // ignore spaces, carriage-return etc.
         buf [i++] = toupper (c);
@@ -1220,6 +1224,8 @@ void loop ()
     command = toupper (Serial.read ());
     } while (!isalpha (command));
 
+  Serial.println (command);  // echo their input
+  
   switch (command)
     {
     case 'R': 
