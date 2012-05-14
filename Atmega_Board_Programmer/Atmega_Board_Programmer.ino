@@ -11,6 +11,7 @@
 // Version 1.6: Allow sketches to read bootloader area (lockbyte: 0x2F)
 // Version 1.7: Added choice of bootloaders for the Atmega328P (8 MHz or 16 MHz)
 // Version 1.8: Output an 8 MHz clock on pin 9
+// Version 1.9: Added support for Atmega1284P, and fixed some bugs
 
 /*
 
@@ -112,6 +113,7 @@ const unsigned long kb = 1024;
 #include "bootloader_atmega168.h"
 #include "bootloader_atmega328.h"
 #include "bootloader_atmega2560_v2.h"
+#include "bootloader_atmega1284.h"
 #include "bootloader_lilypad328.h"
 
 // see Atmega328 datasheet page 298
@@ -179,7 +181,15 @@ signatureType signatures [] =
   { { 0x1E, 0x95, 0x8A }, "ATmega32U2",  32 * kb,   512 },
 
   // ATmega1284P family
-  { { 0x1E, 0x97, 0x05 }, "ATmega1284P", 256 * kb,   1 * kb },
+  { { 0x1E, 0x97, 0x05 }, "ATmega1284P", 256 * kb,   1 * kb,
+        optiboot_atmega1284p_hex,
+        0x1FC00,      // start address
+        1024,         // size of loader
+        256,          // page size (for committing)
+        0xFF,         // fuse low byte: external clock, max start-up time
+        0xDE,         // fuse high byte: SPI enable, boot into bootloader, 1024 byte bootloader
+        0xFD,         // fuse extended byte: brown-out detection at 2.7V
+        0x2F },       // lock bits: SPM is not allowed to write to the Boot Loader section.
   
   };  // end of signatures
 
@@ -200,6 +210,9 @@ byte program (const byte b1, const byte b2 = 0, const byte b3 = 0, const byte b4
 // read a byte from flash memory
 byte readFlash (unsigned long addr)
   {
+  byte high = (addr & 1) ? 0x08 : 0;  // set if high byte wanted
+  addr >>= 1;  // turn into word address
+
   // set the extended (most significant) address byte if necessary
   byte MSB = (addr >> 16) & 0xFF;
   if (MSB != lastAddressMSB)
@@ -207,9 +220,7 @@ byte readFlash (unsigned long addr)
     program (loadExtendedAddressByte, 0, MSB); 
     lastAddressMSB = MSB;
     }  // end if different MSB
-     
-  byte high = (addr & 1) ? 0x08 : 0;  // set if high byte wanted
-  addr >>= 1;  // turn into word address
+
   return program (readProgramMemory | high, highByte (addr), lowByte (addr));
   } // end of readFlash
   
@@ -256,8 +267,10 @@ void pollUntilReady ()
   }  // end of pollUntilReady
   
 // commit page
-void commitPage (const unsigned long addr)
+void commitPage (unsigned long addr)
   {
+  addr >>= 1;  // turn into word address
+  
   // set the extended (most significant) address byte if necessary
   byte MSB = (addr >> 16) & 0xFF;
   if (MSB != lastAddressMSB)
@@ -269,7 +282,7 @@ void commitPage (const unsigned long addr)
   Serial.print (F("Committing page starting at 0x"));
   Serial.println (addr, HEX);
   
-  program (writeProgramMemory, highByte (addr >> 1), lowByte (addr >> 1));
+  program (writeProgramMemory, highByte (addr), lowByte (addr));
   pollUntilReady (); 
   }  // end of commitPage
   
@@ -455,6 +468,7 @@ void writeBootloader ()
     Serial.println (F(" verification error(s)."));
     if (errors > 100)
       Serial.println (F("First 100 shown."));
+    return;  // don't change fuses if errors
     }  // end if
     
   if (command == 'G')
