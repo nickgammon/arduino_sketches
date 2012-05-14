@@ -1,11 +1,12 @@
 // Atmega hex file uploader (from SD card)
 // Author: Nick Gammon
 // Date: 11th May 2012
-// Version: 1.3     // NB update 'Version' variable below!
+// Version: 1.4     // NB update 'Version' variable below!
 
 // Version 1.1: Some code cleanups as suggested on the Arduino forum.
 // Version 1.2: Cleared temporary flash area to 0xFF before doing each page
 // Version 1.3: Added ability to read from flash and write to disk, also to erase flash
+// Version 1.4: Slowed down bit-bang SPI to make it more reliable on slower processors
 
 /*
 
@@ -43,7 +44,7 @@
 // for SDFat library see: http://code.google.com/p/beta-lib/downloads/list
 #include <SdFat.h>
 
-const char Version [] = "1.3";
+const char Version [] = "1.4";
 
 // bit banged SPI pins
 const byte MSPIM_SCK = 4;  // port D bit 4
@@ -85,7 +86,7 @@ const byte BB_MISO_BIT = 6;
 const byte BB_MOSI_BIT = 7;
 
 // control speed of programming
-const byte BB_DELAY_MICROSECONDS = 2;
+const byte BB_DELAY_MICROSECONDS = 4;
 
 
 // target board reset goes to here
