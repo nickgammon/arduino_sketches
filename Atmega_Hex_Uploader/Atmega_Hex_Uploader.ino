@@ -7,6 +7,7 @@
 // Version 1.2: Cleared temporary flash area to 0xFF before doing each page
 // Version 1.3: Added ability to read from flash and write to disk, also to erase flash
 // Version 1.4: Slowed down bit-bang SPI to make it more reliable on slower processors
+// Version 1.5: Fixed bug where file "YES" might be saved instead of the correct name
 
 /*
 
@@ -44,7 +45,7 @@
 // for SDFat library see: http://code.google.com/p/beta-lib/downloads/list
 #include <SdFat.h>
 
-const char Version [] = "1.4";
+const char Version [] = "1.5";
 
 // bit banged SPI pins
 const byte MSPIM_SCK = 4;  // port D bit 4
@@ -1039,9 +1040,10 @@ void readFlashContents ()
     Serial.print (name);    
     Serial.println (F(" exists. Overwrite? Type 'YES' to confirm ..."));  
   
-    getline (name, sizeof name);
+    char response [5];
+    getline (response, sizeof response);
       
-    if (strcmp (name, "YES") == 0)
+    if (strcmp (response, "YES") == 0)
       break;
       
     }  // end of checking if file exists
