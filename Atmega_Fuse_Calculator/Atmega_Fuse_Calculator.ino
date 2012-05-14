@@ -1,9 +1,10 @@
 // Atmega chip fuse caculator
 // Author: Nick Gammon
 // Date: 9th May 2012
-// Version: 1.1
+// Version: 1.2
 
 // Version 1.1: Output an 8 MHz clock on pin 9
+// Version 1.2: Corrected flash size for Atmega1284P.
 
 /*
 
@@ -346,7 +347,7 @@ signatureType signatures [] =
   { { 0x1E, 0x95, 0x8A }, "ATmega32U2",  32 * kb,   512, ATmega8U2_fuses, NUMITEMS (ATmega8U2_fuses) },  // same as ATmega8U2
   
   // ATmega1284P family
-  { { 0x1E, 0x97, 0x05 }, "ATmega1284P", 256 * kb,   1 * kb, ATmega164P_fuses, NUMITEMS (ATmega164P_fuses) },  // same as ATmega164P
+  { { 0x1E, 0x97, 0x05 }, "ATmega1284P", 128 * kb,   1 * kb, ATmega164P_fuses, NUMITEMS (ATmega164P_fuses) },  // same as ATmega164P
   
   };  // end of signatures
 

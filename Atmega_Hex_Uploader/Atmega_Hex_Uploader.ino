@@ -8,6 +8,7 @@
 // Version 1.3: Added ability to read from flash and write to disk, also to erase flash
 // Version 1.4: Slowed down bit-bang SPI to make it more reliable on slower processors
 // Version 1.5: Fixed bug where file "YES" might be saved instead of the correct name
+//              Also corrected flash size for Atmega1284P.
 
 /*
 
@@ -176,7 +177,7 @@ const signatureType signatures [] =
   { { 0x1E, 0x95, 0x8A }, "ATmega32U2",  32 * kb,       512,   128,  highFuse  },
 
   // ATmega1284P family
-  { { 0x1E, 0x97, 0x05 }, "ATmega1284P", 256 * kb,   1 * kb,   256,  highFuse  },
+  { { 0x1E, 0x97, 0x05 }, "ATmega1284P", 128 * kb,   1 * kb,   256,  highFuse  },
   
   };  // end of signatures
 

@@ -12,6 +12,7 @@
 // Version 1.7: Added choice of bootloaders for the Atmega328P (8 MHz or 16 MHz)
 // Version 1.8: Output an 8 MHz clock on pin 9
 // Version 1.9: Added support for Atmega1284P, and fixed some bugs
+// Version 1.10: Corrected flash size for Atmega1284P.
 
 /*
 
@@ -181,7 +182,7 @@ signatureType signatures [] =
   { { 0x1E, 0x95, 0x8A }, "ATmega32U2",  32 * kb,   512 },
 
   // ATmega1284P family
-  { { 0x1E, 0x97, 0x05 }, "ATmega1284P", 256 * kb,   1 * kb,
+  { { 0x1E, 0x97, 0x05 }, "ATmega1284P", 128 * kb,   1 * kb,
         optiboot_atmega1284p_hex,
         0x1FC00,      // start address
         1024,         // size of loader

@@ -1,12 +1,13 @@
 // Atmega chip fuse detector
 // Author: Nick Gammon
 // Date: 9th May 2012
-// Version: 1.4
+// Version: 1.5
 
 // Version 1.1 added signatures for Attiny24/44/84 (5 May 2012)
 // Version 1.2 added signatures for ATmeag8U2/16U2/32U2 (7 May 2012)
 // Version 1.3: Added signature for ATmega1284P (8 May 2012)
 // Version 1.4: Output an 8 MHz clock on pin 9
+// Version 1.5: Corrected flash size for Atmega1284P.
 
 /*
 
@@ -117,7 +118,7 @@ signatureType signatures [] =
   { { 0x1E, 0x95, 0x8A }, "ATmega32U2",  32 * kb,   512 },
   
   // ATmega1284P family
-  { { 0x1E, 0x97, 0x05 }, "ATmega1284P", 256 * kb,   1 * kb },
+  { { 0x1E, 0x97, 0x05 }, "ATmega1284P", 128 * kb,   1 * kb },
   
   };  // end of signatures
 
