@@ -10,7 +10,7 @@
 // Version 1.5: Fixed bug where file "YES" might be saved instead of the correct name
 //              Also corrected flash size for Atmega1284P.
 // Version 1.6: Echo user input
-// Version 1.7: Moved signatures into PROGMEM.
+// Version 1.7: Moved signatures into PROGMEM. Added ability to change fuses/lock byte.
 
 /*
 
@@ -48,7 +48,7 @@
 // for SDFat library see: http://code.google.com/p/beta-lib/downloads/list
 #include <SdFat.h>
 
-#include <memdebug.h>
+// #include <memdebug.h>
 
 const char Version [] = "1.7";
 
@@ -205,17 +205,15 @@ byte i;
       int c = Serial.read ();
       
       if (c == '\n')  // newline terminates
-        {
-        Serial.println (buf);  // echo what they typed
         break;
-        }
       
       if (!isspace (c))  // ignore spaces, carriage-return etc.
         buf [i++] = toupper (c);
       } // end if available
     }  // end of for
   buf [i] = 0;  // terminator
-}     // end of getline
+  Serial.println (buf);  // echo what they typed
+  }     // end of getline
        
 // number of items in an array
 #define NUMITEMS(arg) ((unsigned int) (sizeof (arg) / sizeof (arg [0])))
@@ -778,7 +776,7 @@ void getSignature ()
   
   for (int j = 0; j < NUMITEMS (signatures); j++)
     {
-    memcpy_P (&currentSignature, &currentSignature, sizeof currentSignature);
+    memcpy_P (&currentSignature, &signatures [j], sizeof currentSignature);
     
     if (memcmp (sig, currentSignature.sig, sizeof sig) == 0)
       {
@@ -973,8 +971,8 @@ void setup ()
   }  // end of listing files
  
   
-  Serial.print (F("Free memory = "));
-  Serial.println (getFreeMemory (), DEC);
+//  Serial.print (F("Free memory = "));
+//  Serial.println (getFreeMemory (), DEC);
   
 }  // end of setup
 
@@ -1179,9 +1177,10 @@ void eraseFlashContents ()
   {
   Serial.println (F("Erase all flash memory. ARE YOU SURE? Type 'YES' to confirm ..."));  
 
-  getline (name, sizeof name);
+  char response [5];
+  getline (response, sizeof response);
     
-  if (strcmp (name, "YES") != 0)
+  if (strcmp (response, "YES") != 0)
     {
     Serial.println (F("Flash not erased."));  
     return;
@@ -1195,6 +1194,89 @@ void eraseFlashContents ()
     
   }  // end of eraseFlashContents
 
+void modifyFuses ()
+  {
+  // display current fuses
+  getFuseBytes ();
+  byte fusenumber;
+  
+  Serial.println (F("Choose fuse (LOW/HIGH/EXT/LOCK) ..."));  
+
+  // get which fuse
+  char response [6];
+  getline (response, sizeof response);
+      
+  // turn into number
+  if (strcmp (response, "LOW") == 0)
+    fusenumber = lowFuse;
+  else if (strcmp (response, "HIGH") == 0)
+    fusenumber = highFuse;
+  else if (strcmp (response, "EXT") == 0)
+    fusenumber = extFuse;
+  else if (strcmp (response, "LOCK") == 0)
+    fusenumber = lockByte;
+  else
+    {
+    Serial.println (F("Unknown fuse name."));
+    return;
+    }  // end if
+
+  // show current value
+  Serial.print (F("Current value of "));
+  showFuseName (fusenumber);
+  Serial.print (F(" fuse = "));
+  showHex (fuses [fusenumber], true);
+    
+  // get new value
+  Serial.print (F("Enter new value for "));  
+  showFuseName (fusenumber);
+  Serial.println (F(" fuse (2 hex digits) ..."));
+
+  getline (response, sizeof response);
+  const char * pResponse = response;
+  byte newValue;
+  if (hexConv (pResponse, newValue))
+    return;  // bad hex value
+    
+  // check if no change
+  if (newValue == fuses [fusenumber])
+    {
+    Serial.println (F("Same as original. No change requested."));
+    return;  
+    }  // end if no change to fuse
+
+  // get confirmation
+  Serial.println (F("WARNING: Fuse changes may make the processor unresponsive."));
+  Serial.print (F("Confirm change "));
+  showFuseName (fusenumber);
+  Serial.print (F(" fuse from "));
+  showHex (fuses [fusenumber], false, true);
+  Serial.print (F("to "));
+  showHex (newValue, false, true);
+  Serial.println (F(". Type 'YES' to confirm ..."));  
+
+  getline (response, sizeof response);
+    
+  // has to be "YES" (not case sensitive)
+  if (strcmp (response, "YES") != 0)
+    {
+    Serial.println (F("Cancelled."));
+    return;
+    }  // if cancelled
+    
+  // tell them what we are doing
+  Serial.print (F("Changing "));
+  showFuseName (fusenumber);
+  Serial.println (F(" fuse ..."));
+    
+  // change it
+  writeFuse (newValue, fuseCommands [fusenumber]);      
+  
+  // confirm and show new value
+  Serial.println (F("Fuse written."));
+  getFuseBytes ();
+    
+  }  // end of modifyFuses
   
 //------------------------------------------------------------------------------
 //      LOOP
@@ -1212,6 +1294,7 @@ void loop ()
   // don't have signature? don't proceed
   if (foundSig == -1)
     {
+    Serial.println (F("Halted."));
     while  (true)
       {}
     }  // end of no signature
@@ -1219,6 +1302,7 @@ void loop ()
  // ask for verify or write
   Serial.println (F("Actions:"));
   Serial.println (F(" [E] erase flash"));
+  Serial.println (F(" [F] modify fuses"));
   Serial.println (F(" [R] read from flash (save to disk)"));
   Serial.println (F(" [V] verify flash (compare to disk)"));
   Serial.println (F(" [W] write to flash (read from disk)"));
@@ -1254,6 +1338,10 @@ void loop ()
       eraseFlashContents (); 
       break; 
     
+    case 'F': 
+      modifyFuses (); 
+      break; 
+
     default: 
       Serial.println (F("Unknown command.")); 
       break;
