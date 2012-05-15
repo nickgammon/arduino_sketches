@@ -10,6 +10,7 @@
 // Version 1.5: Fixed bug where file "YES" might be saved instead of the correct name
 //              Also corrected flash size for Atmega1284P.
 // Version 1.6: Echo user input
+// Version 1.7: Moved signatures into PROGMEM.
 
 /*
 
@@ -47,7 +48,9 @@
 // for SDFat library see: http://code.google.com/p/beta-lib/downloads/list
 #include <SdFat.h>
 
-const char Version [] = "1.6";
+#include <memdebug.h>
+
+const char Version [] = "1.7";
 
 // bit banged SPI pins
 const byte MSPIM_SCK = 4;  // port D bit 4
@@ -137,7 +140,7 @@ const byte NO_FUSE = 0xFF;
 
 
 // see Atmega datasheets
-const signatureType signatures [] = 
+signatureType PROGMEM signatures [] = 
   {
 //     signature        description   flash size   bootloader  flash  fuse
 //                                                     size    page    to
@@ -291,7 +294,8 @@ byte BB_SPITransfer (byte c)
 // if signature found in above table, this is its index
 int foundSig = -1;
 byte lastAddressMSB = 0;
-
+// copy of current signature entry for matching processor
+signatureType currentSignature;
 
 // execute one programming instruction ... b1 is command, b2, b3, b4 are arguments
 //  processor may return a result on the 4th transfer, this is returned.
@@ -395,7 +399,7 @@ void showProgress ()
 // clear entire temporary page to 0xFF in case we don't write to all of it 
 void clearPage ()
 {
-  unsigned int len = signatures [foundSig].pageSize;
+  unsigned int len = currentSignature.pageSize;
   for (int i = 0; i < len; i++)
     writeFlash (i, 0xFF);
 }  // end of clearPage
@@ -620,7 +624,7 @@ boolean readHexFile (const char * fName, const byte action)
   bytesWritten = 0;
   progressBarCount = 0;
 
-  pagesize = signatures [foundSig].pageSize;
+  pagesize = currentSignature.pageSize;
   pagemask = ~(pagesize - 1);
   oldPage = NO_PAGE;
 
@@ -774,13 +778,15 @@ void getSignature ()
   
   for (int j = 0; j < NUMITEMS (signatures); j++)
     {
-    if (memcmp (sig, signatures [j].sig, sizeof sig) == 0)
+    memcpy_P (&currentSignature, &currentSignature, sizeof currentSignature);
+    
+    if (memcmp (sig, currentSignature.sig, sizeof sig) == 0)
       {
       foundSig = j;
       Serial.print (F("Processor = "));
-      Serial.println (signatures [j].desc);
+      Serial.println (currentSignature.desc);
       Serial.print (F("Flash memory size = "));
-      Serial.print (signatures [j].flashSize, DEC);
+      Serial.print (currentSignature.flashSize, DEC);
       Serial.println (F(" bytes."));
       
       // make sure extended address is zero to match lastAddressMSB variable
@@ -835,7 +841,7 @@ boolean updateFuses (const boolean writeIt)
   unsigned long addr;
   unsigned int  len;
   
-  byte fusenumber = signatures [foundSig].fuseWithBootloaderSize;
+  byte fusenumber = currentSignature.fuseWithBootloaderSize;
   
   // if no fuse, can't change it
   if (fusenumber == NO_FUSE)
@@ -844,8 +850,8 @@ boolean updateFuses (const boolean writeIt)
     return false;  // ok return
     }
     
-  addr = signatures [foundSig].flashSize;
-  len = signatures [foundSig].baseBootSize;
+  addr = currentSignature.flashSize;
+  len = currentSignature.baseBootSize;
     
   if (lowestAddress == 0)
     {
@@ -965,6 +971,10 @@ void setup ()
       }
     file.close();
   }  // end of listing files
+ 
+  
+  Serial.print (F("Free memory = "));
+  Serial.println (getFreeMemory (), DEC);
   
 }  // end of setup
 
@@ -994,12 +1004,12 @@ boolean chooseInputFile ()
   memcpy (lastFileName, name, sizeof lastFileName);
   
   // check file would fit into device memory
-  if (highestAddress > signatures [foundSig].flashSize)
+  if (highestAddress > currentSignature.flashSize)
     {
     Serial.print (F("Highest address of 0x"));      
     Serial.print (highestAddress, HEX); 
     Serial.print (F(" exceeds available flash memory top 0x"));      
-    Serial.println (signatures [foundSig].flashSize, HEX); 
+    Serial.println (currentSignature.flashSize, HEX); 
     Serial.println (F("***********************************"));
     return true; 
     }
@@ -1017,7 +1027,7 @@ boolean chooseInputFile ()
 void readFlashContents ()
   {
   progressBarCount = 0;
-  pagesize = signatures [foundSig].pageSize;
+  pagesize = currentSignature.pageSize;
   pagemask = ~(pagesize - 1);
   oldPage = NO_PAGE;
   byte lastMSBwritten = 0;
@@ -1072,7 +1082,7 @@ void readFlashContents ()
   
   Serial.println (F("Copying flash memory to SD card (disk) ..."));  
     
-  for (unsigned long address = 0; address < signatures [foundSig].flashSize; address += sizeof memBuf)
+  for (unsigned long address = 0; address < currentSignature.flashSize; address += sizeof memBuf)
     {
       
     unsigned long thisPage = address & pagemask;
