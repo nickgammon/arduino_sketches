@@ -1233,6 +1233,16 @@ void modifyFuses ()
   Serial.println (F(" fuse (2 hex digits) ..."));
 
   getline (response, sizeof response);
+  
+  if (strlen (response) == 0)
+    return;
+    
+  if (strlen (response) != 2)
+    {
+    Serial.println (F("Enter exactly two hex digits."));
+    return;
+    }
+    
   const char * pResponse = response;
   byte newValue;
   if (hexConv (pResponse, newValue))
