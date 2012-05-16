@@ -1,7 +1,7 @@
 // Atmega hex file uploader (from SD card)
 // Author: Nick Gammon
 // Date: 11th May 2012
-// Version: 1.4     // NB update 'Version' variable below!
+// Version: 1.8     // NB update 'Version' variable below!
 
 // Version 1.1: Some code cleanups as suggested on the Arduino forum.
 // Version 1.2: Cleared temporary flash area to 0xFF before doing each page
@@ -11,6 +11,8 @@
 //              Also corrected flash size for Atmega1284P.
 // Version 1.6: Echo user input
 // Version 1.7: Moved signatures into PROGMEM. Added ability to change fuses/lock byte.
+// Version 1.8: Made dates in file list line up. Omit date/time if default (unknown) date used.
+//              Added "L" command (list directory)
 
 /*
 
@@ -50,7 +52,7 @@
 
 // #include <memdebug.h>
 
-const char Version [] = "1.7";
+const char Version [] = "1.8";
 
 // bit banged SPI pins
 const byte MSPIM_SCK = 4;  // port D bit 4
@@ -903,6 +905,57 @@ boolean updateFuses (const boolean writeIt)
   return false;
   }  // end of updateFuses
 
+void showDirectory ()
+  {
+  // list files in root directory
+  
+  SdFile file;
+  char name[MAX_FILENAME];
+  
+  Serial.println ();  
+  Serial.println (F("HEX files in root directory:"));  
+  Serial.println ();  
+  
+  // back to start of directory
+  sd.vwd()->rewind ();
+  
+  // open next file in root.  The volume working directory, vwd, is root
+  while (file.openNext(sd.vwd(), O_READ)) {
+    file.getFilename(name);
+    byte len = strlen (name);
+    if (len > 4 && strcmp (&name [len - 4], ".HEX") == 0)
+      {
+      Serial.print (name);
+      for (byte i = strlen (name); i < 13; i++)
+        Serial.write (' ');  // space out so dates line up
+      Serial.print (F(" : "));
+      char buf [12];
+      sprintf (buf, "%10lu", file.fileSize ()); 
+     
+      Serial.print (buf);
+      Serial.print (F(" bytes."));
+      
+      dir_t d;
+      if (!file.dirEntry(&d)) 
+        Serial.println(F("Failed to find file date/time."));
+      else if (d.creationDate != FAT_DEFAULT_DATE)
+        {
+        Serial.print(F("  Created: "));
+        file.printFatDate(&Serial, d.creationDate);
+        Serial.print(F(" "));
+        file.printFatTime(&Serial, d.creationTime);
+        Serial.print(F(".  Modified: "));
+        file.printFatDate(&Serial, d.lastWriteDate);
+        Serial.print(F(" "));
+        file.printFatTime(&Serial, d.lastWriteTime);
+        }  // end of got date/time from directory
+      Serial.println ();
+      }
+    file.close();
+    }  // end of listing files
+    
+  }  // end of showDirectory
+  
 //------------------------------------------------------------------------------
 //      SETUP
 //------------------------------------------------------------------------------
@@ -931,45 +984,7 @@ void setup ()
   if (!sd.begin (chipSelect, SPI_HALF_SPEED)) 
     sd.initErrorHalt();
 
-  // list files in root directory
-  
-  SdFile file;
-  char name[MAX_FILENAME];
-  
-  Serial.println ();  
-  Serial.println (F("HEX files in root directory:"));  
-  Serial.println ();  
-  
-  // open next file in root.  The volume working directory, vwd, is root
-  while (file.openNext(sd.vwd(), O_READ)) {
-    file.getFilename(name);
-    byte len = strlen (name);
-    if (len > 4 && strcmp (&name [len - 4], ".HEX") == 0)
-      {
-      Serial.print (name);
-      Serial.print (F(" : "));
-      Serial.print (file.fileSize (), DEC);
-      Serial.print (F(" bytes."));
-      
-      dir_t d;
-      if (!file.dirEntry(&d)) 
-        Serial.println(F("Failed to find file date/time."));
-      else
-        {
-        Serial.print(F("  Created: "));
-        file.printFatDate(&Serial, d.creationDate);
-        Serial.print(F(" "));
-        file.printFatTime(&Serial, d.creationTime);
-        Serial.print(F(".  Modified: "));
-        file.printFatDate(&Serial, d.lastWriteDate);
-        Serial.print(F(" "));
-        file.printFatTime(&Serial, d.lastWriteTime);
-        }  // end of got date/time from directory
-      Serial.println ();
-      }
-    file.close();
-  }  // end of listing files
- 
+  showDirectory ();
   
 //  Serial.print (F("Free memory = "));
 //  Serial.println (getFreeMemory (), DEC);
@@ -1022,6 +1037,14 @@ boolean chooseInputFile ()
    return false;   
   }  // end of chooseInputFile
   
+boolean getYesNo ()
+  {
+  char response [5];
+  getline (response, sizeof response);
+    
+  return strcmp (response, "YES") == 0;
+  }  // end of getYesNo
+  
 void readFlashContents ()
   {
   progressBarCount = 0;
@@ -1053,10 +1076,7 @@ void readFlashContents ()
     Serial.print (name);    
     Serial.println (F(" exists. Overwrite? Type 'YES' to confirm ..."));  
   
-    char response [5];
-    getline (response, sizeof response);
-      
-    if (strcmp (response, "YES") == 0)
+    if (getYesNo ())
       break;
       
     }  // end of checking if file exists
@@ -1156,7 +1176,7 @@ void writeFlashContents ()
   // now commit to flash
   readHexFile(name, writeToFlash);
 
-  // verify anyway
+  // verify
   readHexFile(name, verifyFlash);
 
   // now fix up fuses so we can boot    
@@ -1176,11 +1196,8 @@ void verifyFlashContents ()
 void eraseFlashContents ()
   {
   Serial.println (F("Erase all flash memory. ARE YOU SURE? Type 'YES' to confirm ..."));  
-
-  char response [5];
-  getline (response, sizeof response);
     
-  if (strcmp (response, "YES") != 0)
+  if (!getYesNo ())
     {
     Serial.println (F("Flash not erased."));  
     return;
@@ -1264,11 +1281,9 @@ void modifyFuses ()
   Serial.print (F("to "));
   showHex (newValue, false, true);
   Serial.println (F(". Type 'YES' to confirm ..."));  
-
-  getline (response, sizeof response);
-    
+   
   // has to be "YES" (not case sensitive)
-  if (strcmp (response, "YES") != 0)
+  if (!getYesNo ())
     {
     Serial.println (F("Cancelled."));
     return;
@@ -1313,6 +1328,7 @@ void loop ()
   Serial.println (F("Actions:"));
   Serial.println (F(" [E] erase flash"));
   Serial.println (F(" [F] modify fuses"));
+  Serial.println (F(" [L] list directory"));
   Serial.println (F(" [R] read from flash (save to disk)"));
   Serial.println (F(" [V] verify flash (compare to disk)"));
   Serial.println (F(" [W] write to flash (read from disk)"));
@@ -1352,6 +1368,10 @@ void loop ()
       modifyFuses (); 
       break; 
 
+   case 'L':
+      showDirectory ();
+      break;
+     
     default: 
       Serial.println (F("Unknown command.")); 
       break;
