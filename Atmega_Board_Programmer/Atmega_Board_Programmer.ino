@@ -1,7 +1,7 @@
 // Atmega chip programmer
 // Author: Nick Gammon
 // Date: 9th May 2012
-// Version: 1.8
+// Version: 1.9
 
 // Version 1.1: Reset foundSig to -1 each time around the loop.
 // Version 1.2: Put hex bootloader data into separate files
@@ -13,6 +13,7 @@
 // Version 1.8: Output an 8 MHz clock on pin 9
 // Version 1.9: Added support for Atmega1284P, and fixed some bugs
 // Version 1.10: Corrected flash size for Atmega1284P.
+// Version 1.11: Added support for Atmega1280. Removed MD5SUM stuff to make room.
 
 /*
 
@@ -41,18 +42,9 @@
  or the use or other dealings in the software. 
 
 */
-
-#define INCLUDE_MD5SUM true  // make false if you are running out of program memory
  
 #include <SPI.h>
 #include <avr/pgmspace.h>
-
-#if INCLUDE_MD5SUM
-extern "C" 
-  {
-  #include "md5.h"
-  }
-#endif // INCLUDE_MD5SUM
 
 const unsigned long BAUD_RATE = 115200;
 
@@ -116,6 +108,7 @@ const unsigned long kb = 1024;
 #include "bootloader_atmega2560_v2.h"
 #include "bootloader_atmega1284.h"
 #include "bootloader_lilypad328.h"
+#include "bootloader_atmega1280.h"
 
 // see Atmega328 datasheet page 298
 signatureType signatures [] = 
@@ -138,7 +131,7 @@ signatureType signatures [] =
   { { 0x1E, 0x94, 0x0B }, "ATmega168PA", 16 * kb,       256,
         atmega168_optiboot,   // loader image
         0x3E00,               // start address
-        512,          // size of loader
+        sizeof atmega168_optiboot, 
         128,          // page size (for committing)
         0xC6,         // fuse low byte: external full-swing crystal
         0xDD,         // fuse high byte: SPI enable, brown-out detection at 2.7V
@@ -148,7 +141,7 @@ signatureType signatures [] =
   { { 0x1E, 0x95, 0x0F }, "ATmega328P",  32 * kb,       512, 
         atmega328_optiboot,   // loader image
         0x7E00,               // start address
-        512,          // size of loader
+        sizeof atmega328_optiboot, 
         128,          // page size (for committing)
         0xFF,         // fuse low byte: external clock, max start-up time
         0xDE,         // fuse high byte: SPI enable, boot into bootloader, 512 byte bootloader
@@ -162,13 +155,22 @@ signatureType signatures [] =
 
   // Atmega2560 family
   { { 0x1E, 0x96, 0x08 }, "ATmega640",    64 * kb,   1 * kb },
-  { { 0x1E, 0x97, 0x03 }, "ATmega1280",  128 * kb,   1 * kb },
+  { { 0x1E, 0x97, 0x03 }, "ATmega1280",  128 * kb,   1 * kb,
+        ATmegaBOOT_168_atmega1280_hex,
+        0x1F000,      // start address
+        sizeof ATmegaBOOT_168_atmega1280_hex,   
+        256,          // page size (for committing)
+        0xFF,         // fuse low byte: external clock, max start-up time
+        0xDA,         // fuse high byte: SPI enable, boot into bootloader, 4096 byte bootloader
+        0xF5,         // fuse extended byte: brown-out detection at 2.7V
+        0x2F },       // lock bits: SPM is not allowed to write to the Boot Loader section.
+        
   { { 0x1E, 0x97, 0x04 }, "ATmega1281",  128 * kb,   1 * kb },
   { { 0x1E, 0x98, 0x01 }, "ATmega2560",  256 * kb,   1 * kb, 
-        atmega2560_v2,   // loader image
-        0x3E000,         // start address
-        8192,     // size of loader
-        256,      // page size (for committing)
+        atmega2560_v2,// loader image
+        0x3E000,      // start address
+        sizeof atmega2560_v2,   
+        256,          // page size (for committing)
         0xFF,         // fuse low byte: external clock, max start-up time
         0xD8,         // fuse high byte: SPI enable, boot into bootloader, 8192 byte bootloader
         0xFD,         // fuse extended byte: brown-out detection at 2.7V
@@ -185,7 +187,7 @@ signatureType signatures [] =
   { { 0x1E, 0x97, 0x05 }, "ATmega1284P", 128 * kb,   1 * kb,
         optiboot_atmega1284p_hex,
         0x1FC00,      // start address
-        1024,         // size of loader
+        sizeof optiboot_atmega1284p_hex,       
         256,          // page size (for committing)
         0xFF,         // fuse low byte: external clock, max start-up time
         0xDE,         // fuse high byte: SPI enable, boot into bootloader, 1024 byte bootloader
@@ -308,31 +310,6 @@ void getFuseBytes ()
   Serial.print (F("Lock byte = "));
   showHex (program (readLockByte, readLockByteArg2), true);
   }  // end of getFuseBytes
-  
-#if INCLUDE_MD5SUM
-void showMD5sum (unsigned long addr, unsigned long len)
-  {
-  
-  md5_context ctx;
-  byte md5sum [16];
-  byte mem;
-
-  md5_starts( &ctx );
-  
-  while (len--)
-    {
-    mem = readFlash (addr++);
-    md5_update( &ctx, &mem, 1);
-    }  // end of doing MD5 sum on each byte
-    
-  md5_finish( &ctx, md5sum );
-
-  for (int i = 0; i < sizeof md5sum; i++)
-    showHex (md5sum [i], false, false);
-  Serial.println ();  
-  Serial.println ();  
-  }  // end of showMD5sum
-#endif // INCLUDE_MD5SUM
 
 // burn the bootloader to the target device
 void writeBootloader ()
@@ -368,12 +345,6 @@ void writeBootloader ()
   Serial.print (len);
   Serial.println (F(" bytes."));
 
-#if INCLUDE_MD5SUM
-  Serial.println ();
-  Serial.print (F("MD5 sum of current bootloader = "));
-  showMD5sum (signatures [foundSig].loaderStart, signatures [foundSig].loaderLength);
-#endif // INCLUDE_MD5SUM
-
   byte subcommand = 'U';
   
   if (signatures [foundSig].sig [0] == 0x1E &&
@@ -393,7 +364,7 @@ void writeBootloader ()
       newlFuse = 0xE2;  // internal 8 MHz oscillator
       newhFuse = 0xDA;  //  2048 byte bootloader, SPI enabled
       addr = 0x7800;
-      len = 2048;
+      len = sizeof ATmegaBOOT_168_atmega328_pro_8MHz_hex;
       }  // end of using the 8 MHz clock
     else
       Serial.println (F("Using Uno Optiboot 16 MHz loader."));
@@ -429,12 +400,6 @@ void writeBootloader ()
     // commit final page
     commitPage (oldPage);
     Serial.println ("Written.");
-    
-#if INCLUDE_MD5SUM    
-    Serial.println ();
-    Serial.print (F("MD5 sum of new bootloader = "));
-    showMD5sum (signatures [foundSig].loaderStart, signatures [foundSig].loaderLength);
-#endif // INCLUDE_MD5SUM    
     }  // end if programming
   
   Serial.println (F("Verifying ..."));
