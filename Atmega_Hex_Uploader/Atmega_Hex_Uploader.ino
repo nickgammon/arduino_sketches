@@ -13,6 +13,7 @@
 // Version 1.7: Moved signatures into PROGMEM. Added ability to change fuses/lock byte.
 // Version 1.8: Made dates in file list line up. Omit date/time if default (unknown) date used.
 //              Added "L" command (list directory)
+// Version 1.9: Ensure in programming mode before access flash (eg. if reset removed to test)
 
 /*
 
@@ -1080,7 +1081,10 @@ void readFlashContents ()
       break;
       
     }  // end of checking if file exists
-    
+  
+  // ensure back in programming mode  
+  startProgramming ();
+  
   SdFile myFile;
 
   // open the file for writing
@@ -1173,6 +1177,9 @@ void writeFlashContents ()
   if (chooseInputFile ())
     return;  
 
+  // ensure back in programming mode  
+  startProgramming ();
+
   // now commit to flash
   readHexFile(name, writeToFlash);
 
@@ -1188,6 +1195,9 @@ void verifyFlashContents ()
   {
   if (chooseInputFile ())
     return;  
+
+  // ensure back in programming mode  
+  startProgramming ();
     
   // verify it
   readHexFile(name, verifyFlash);
@@ -1202,6 +1212,9 @@ void eraseFlashContents ()
     Serial.println (F("Flash not erased."));  
     return;
     }
+    
+  // ensure back in programming mode  
+  startProgramming ();
     
   Serial.println (F("Erasing chip ..."));
   program (progamEnable, chipErase);   // erase it
@@ -1288,6 +1301,9 @@ void modifyFuses ()
     Serial.println (F("Cancelled."));
     return;
     }  // if cancelled
+    
+  // ensure back in programming mode  
+  startProgramming ();
     
   // tell them what we are doing
   Serial.print (F("Changing "));
