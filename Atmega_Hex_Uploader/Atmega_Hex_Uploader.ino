@@ -14,6 +14,7 @@
 // Version 1.8: Made dates in file list line up. Omit date/time if default (unknown) date used.
 //              Added "L" command (list directory)
 // Version 1.9: Ensure in programming mode before access flash (eg. if reset removed to test)
+//              Added reading of clock calibration byte (note: this cannot be changed)
 
 /*
 
@@ -53,7 +54,7 @@
 
 // #include <memdebug.h>
 
-const char Version [] = "1.8";
+const char Version [] = "1.9";
 
 // bit banged SPI pins
 const byte MSPIM_SCK = 4;  // port D bit 4
@@ -118,14 +119,15 @@ enum {
 SdFat sd;
 
 // copy of fuses/lock bytes found for this processor
-byte fuses [4];
+byte fuses [5];
 
 // meaning of bytes in above array
 enum {
       lowFuse,
       highFuse,
       extFuse,
-      lockByte
+      lockByte,
+      calibrationByte
 };
 
 // structure to hold signature and other relevant data about each chip
@@ -237,6 +239,7 @@ enum {
     programAcknowledge = 0x53,
     
     readSignatureByte = 0x30,
+    readCalibrationByte = 0x38,
     
     readLowFuseByte = 0x50,       readLowFuseByteArg2 = 0x00,
     readExtendedFuseByte = 0x50,  readExtendedFuseByteArg2 = 0x08,
@@ -805,6 +808,7 @@ void getFuseBytes ()
   fuses [highFuse]  = program (readHighFuseByte, readHighFuseByteArg2);
   fuses [extFuse]   = program (readExtendedFuseByte, readExtendedFuseByteArg2);
   fuses [lockByte]  = program (readLockByte, readLockByteArg2);
+  fuses [calibrationByte]  = program (readCalibrationByte);
   
   Serial.print (F("LFuse = "));
   showHex (fuses [lowFuse], true);
@@ -814,16 +818,19 @@ void getFuseBytes ()
   showHex (fuses [extFuse], true);
   Serial.print (F("Lock byte = "));
   showHex (fuses [lockByte], true);
+  Serial.print (F("Clock calibration = "));
+  showHex (fuses [calibrationByte], true);
   }  // end of getFuseBytes
 
 void showFuseName (const byte which)
   {
   switch (which)
     {
-    case lowFuse:   Serial.print (F("low"));      break;
-    case highFuse:  Serial.print (F("high"));     break;
-    case extFuse:   Serial.print (F("extended")); break;
-    case lockByte:  Serial.print (F("lock"));     break;
+    case lowFuse:         Serial.print (F("low"));      break;
+    case highFuse:        Serial.print (F("high"));     break;
+    case extFuse:         Serial.print (F("extended")); break;
+    case lockByte:        Serial.print (F("lock"));     break;
+    case calibrationByte: Serial.print (F("clock"));    break;    
     }  // end of switch  
   }  // end of showFuseName
   
