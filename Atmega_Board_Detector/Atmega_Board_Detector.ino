@@ -1,13 +1,14 @@
 // Atmega chip fuse detector
 // Author: Nick Gammon
-// Date: 9th May 2012
-// Version: 1.5
+// Date: 22nd May 2012
+// Version: 1.6
 
 // Version 1.1 added signatures for Attiny24/44/84 (5 May 2012)
 // Version 1.2 added signatures for ATmeag8U2/16U2/32U2 (7 May 2012)
 // Version 1.3: Added signature for ATmega1284P (8 May 2012)
 // Version 1.4: Output an 8 MHz clock on pin 9
 // Version 1.5: Corrected flash size for Atmega1284P.
+// Version 1.6: Added signatures for ATtiny2313A, ATtiny4313, ATtiny13
 
 /*
 
@@ -59,6 +60,7 @@ enum {
     programAcknowledge = 0x53,
     
     readSignatureByte = 0x30,
+    readCalibrationByte = 0x38,
     
     readLowFuseByte = 0x50,       readLowFuseByteArg2 = 0x00,
     readExtendedFuseByte = 0x50,  readExtendedFuseByteArg2 = 0x08,
@@ -80,7 +82,7 @@ typedef struct {
 const unsigned long kb = 1024;
 
 // see Atmega328 datasheet page 298
-signatureType signatures [] = 
+const signatureType signatures [] = 
   {
 //     signature          description   flash size  bootloader size
 
@@ -119,6 +121,13 @@ signatureType signatures [] =
   
   // ATmega1284P family
   { { 0x1E, 0x97, 0x05 }, "ATmega1284P", 128 * kb,   1 * kb },
+  
+  // ATtiny4313 family
+  { { 0x1E, 0x91, 0x0A }, "ATtiny2313A", 2 * kb,   0 },
+  { { 0x1E, 0x92, 0x0D }, "ATtiny4313",  4 * kb,   0 },
+  
+  // ATtiny13 family
+  { { 0x1E, 0x90, 0x07 }, "ATtiny13A",   1 * kb,   0 },
   
   };  // end of signatures
 
@@ -344,6 +353,8 @@ void getFuseBytes ()
   showHex (program (readExtendedFuseByte, readExtendedFuseByteArg2), true);
   Serial.print ("Lock byte = ");
   showHex (program (readLockByte, readLockByteArg2), true);
+  Serial.print ("Clock calibration = ");
+  showHex (program (readCalibrationByte), true);
   }  // end of getFuseBytes
 
 void setup ()

@@ -1,7 +1,7 @@
 // Atmega hex file uploader (from SD card)
 // Author: Nick Gammon
-// Date: 11th May 2012
-// Version: 1.8     // NB update 'Version' variable below!
+// Date: 22nd May 2012
+// Version: 1.10     // NB update 'Version' variable below!
 
 // Version 1.1: Some code cleanups as suggested on the Arduino forum.
 // Version 1.2: Cleared temporary flash area to 0xFF before doing each page
@@ -15,6 +15,7 @@
 //              Added "L" command (list directory)
 // Version 1.9: Ensure in programming mode before access flash (eg. if reset removed to test)
 //              Added reading of clock calibration byte (note: this cannot be changed)
+// Version 1.10: Added signatures for ATtiny2313A, ATtiny4313, ATtiny13
 
 /*
 
@@ -54,7 +55,7 @@
 
 // #include <memdebug.h>
 
-const char Version [] = "1.9";
+const char Version [] = "1.10";
 
 // bit banged SPI pins
 const byte MSPIM_SCK = 4;  // port D bit 4
@@ -145,7 +146,7 @@ const byte NO_FUSE = 0xFF;
 
 
 // see Atmega datasheets
-signatureType PROGMEM signatures [] = 
+const signatureType PROGMEM signatures [] = 
   {
 //     signature        description   flash size   bootloader  flash  fuse
 //                                                     size    page    to
@@ -188,6 +189,13 @@ signatureType PROGMEM signatures [] =
   // ATmega1284P family
   { { 0x1E, 0x97, 0x05 }, "ATmega1284P", 128 * kb,   1 * kb,   256,  highFuse  },
   
+  // ATtiny4313 family
+  { { 0x1E, 0x91, 0x0A }, "ATtiny2313A",   2 * kb,        0,    32,  NO_FUSE  },
+  { { 0x1E, 0x92, 0x0D }, "ATtiny4313",    4 * kb,        0,    64,  NO_FUSE  },
+
+  // ATtiny13 family
+  { { 0x1E, 0x90, 0x07 }, "ATtiny13A",     1 * kb,        0,    32,  NO_FUSE },
+ 
   };  // end of signatures
 
 char name[MAX_FILENAME] = { 0 };  // current file name

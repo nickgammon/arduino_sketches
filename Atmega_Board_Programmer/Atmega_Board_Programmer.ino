@@ -1,7 +1,7 @@
 // Atmega chip programmer
 // Author: Nick Gammon
-// Date: 9th May 2012
-// Version: 1.9
+// Date: 22nd May 2012
+// Version: 1.12
 
 // Version 1.1: Reset foundSig to -1 each time around the loop.
 // Version 1.2: Put hex bootloader data into separate files
@@ -14,6 +14,7 @@
 // Version 1.9: Added support for Atmega1284P, and fixed some bugs
 // Version 1.10: Corrected flash size for Atmega1284P.
 // Version 1.11: Added support for Atmega1280. Removed MD5SUM stuff to make room.
+// Version 1.12: Added signatures for ATtiny2313A, ATtiny4313, ATtiny13
 
 /*
 
@@ -74,6 +75,7 @@ enum {
     programAcknowledge = 0x53,
     
     readSignatureByte = 0x30,
+    readCalibrationByte = 0x38,
     
     readLowFuseByte = 0x50,       readLowFuseByteArg2 = 0x00,
     readExtendedFuseByte = 0x50,  readExtendedFuseByteArg2 = 0x08,
@@ -194,6 +196,13 @@ signatureType signatures [] =
         0xFD,         // fuse extended byte: brown-out detection at 2.7V
         0x2F },       // lock bits: SPM is not allowed to write to the Boot Loader section.
   
+  // ATtiny4313 family
+  { { 0x1E, 0x91, 0x0A }, "ATtiny2313A", 2 * kb,   0 },
+  { { 0x1E, 0x92, 0x0D }, "ATtiny4313",  4 * kb,   0 },
+  
+  // ATtiny13 family
+  { { 0x1E, 0x90, 0x07 }, "ATtiny13A",     1 * kb, 0 },
+  
   };  // end of signatures
 
 // if signature found in above table, this is its index
@@ -309,6 +318,8 @@ void getFuseBytes ()
   showHex (program (readExtendedFuseByte, readExtendedFuseByteArg2), true);
   Serial.print (F("Lock byte = "));
   showHex (program (readLockByte, readLockByteArg2), true);
+  Serial.print ("Clock calibration = ");
+  showHex (program (readCalibrationByte), true);  
   }  // end of getFuseBytes
 
 // burn the bootloader to the target device

@@ -1,10 +1,11 @@
 // Atmega chip fuse caculator
 // Author: Nick Gammon
-// Date: 9th May 2012
-// Version: 1.2
+// Date: 222nd May 2012
+// Version: 1.3
 
 // Version 1.1: Output an 8 MHz clock on pin 9
 // Version 1.2: Corrected flash size for Atmega1284P.
+// Version 1.3: Added signatures for ATtiny2313A, ATtiny4313, ATtiny13
 
 /*
 
@@ -52,6 +53,7 @@ enum {
     programAcknowledge = 0x53,
     
     readSignatureByte = 0x30,
+    readCalibrationByte = 0x38,
     
     readLowFuseByte = 0x50,       readLowFuseByteArg2 = 0x00,
     readExtendedFuseByte = 0x50,  readExtendedFuseByteArg2 = 0x08,
@@ -64,18 +66,19 @@ enum {
 };  // end of enum
 
 // copy of fuses/lock bytes found for this processor
-byte fuses [4];
+byte fuses [5];
 
 // meaning of bytes in above array
 enum {
       lowFuse,
       highFuse,
       extFuse,
-      lockByte
+      lockByte,
+      calibrationByte
 };
 
 // handler for special things like bootloader size
-typedef void (*specialHandlerFunction) (const byte val, const byte mask, const unsigned int bootLoaderSize);
+typedef void (*specialHandlerFunction) (const byte val, const unsigned int bootLoaderSize);
 
 // item for one piece of fuse information
 typedef struct {
@@ -102,7 +105,7 @@ char PROGMEM descOCDEnable               [] = "OCD Enable";
 char PROGMEM descJtagEnable              [] = "JTAG Enable";
 
 // calculate size of bootloader
-void fBootloaderSize (const byte val, const byte mask, const unsigned int bootLoaderSize)
+void fBootloaderSize (const byte val, const unsigned int bootLoaderSize)
   {
   Serial.print (F("Bootloader size: "));  
   unsigned int len = bootLoaderSize;
@@ -119,22 +122,22 @@ void fBootloaderSize (const byte val, const byte mask, const unsigned int bootLo
   } // end of fBootloaderSize
 
 // show brownout level
-void fBrownoutDetectorLevel (const byte val, const byte mask, const unsigned int bootLoaderSize)
+void fBrownoutDetectorLevel (const byte val, const unsigned int bootLoaderSize)
   {
   Serial.print (F("Brownout detection at: "));  
-  switch (val)
+  switch (val & 3)
     {
-    case 0b111: Serial.println (F("disabled."));   break;
-    case 0b110: Serial.println (F("1.8V."));       break;
-    case 0b101: Serial.println (F("2.7V."));       break;
-    case 0b100: Serial.println (F("4.3V."));       break;
+    case 0b11: Serial.println (F("disabled."));   break;
+    case 0b10: Serial.println (F("1.8V."));       break;
+    case 0b01: Serial.println (F("2.7V."));       break;
+    case 0b00: Serial.println (F("4.3V."));       break;
     default:    Serial.println (F("reserved."));   break;
     }  // end of switch
   
   } // end of fBrownoutDetectorLevel
 
 // show brownout level (alternative)
-void fBrownoutDetectorLevelAtmega8U2 (const byte val, const byte mask, const unsigned int bootLoaderSize)
+void fBrownoutDetectorLevelAtmega8U2 (const byte val, const unsigned int bootLoaderSize)
   {
   Serial.print (F("Brownout detection at: "));  
   switch (val)
@@ -151,7 +154,7 @@ void fBrownoutDetectorLevelAtmega8U2 (const byte val, const byte mask, const uns
   } // end of fBrownoutDetectorLevelAtmega8U2
 
 // show clock start-up times
-void fStartUpTime (const byte val, const byte mask, const unsigned int bootLoaderSize)
+void fStartUpTime (const byte val, const unsigned int bootLoaderSize)
   {
   Serial.print (F("Start-up time: SUT0:"));  
   if ((val & 1) == 0)  // if zero, the fuse is "programmed"
@@ -167,7 +170,7 @@ void fStartUpTime (const byte val, const byte mask, const unsigned int bootLoade
   } // end of fStartUpTime
   
 // work out clock source
-void fClockSource (const byte val, const byte mask, const unsigned int bootLoaderSize)
+void fClockSource (const byte val, const unsigned int bootLoaderSize)
   {
   Serial.print (F("Clock source: "));  
   switch (val)
@@ -296,6 +299,46 @@ fuseMeaning PROGMEM ATmega164P_fuses [] =
     
   };  // end of ATmega164P_fuses  
   
+fuseMeaning PROGMEM ATtiny4313_fuses [] = 
+  {
+    { extFuse,  0x01, descSelfProgrammingEnable },
+  
+    { highFuse, 0x80, descDebugWireEnable },
+    { highFuse, 0x40, descEEPROMsave },
+    { highFuse, 0x20, descSerialProgrammingEnable },
+    { highFuse, 0x10, descWatchdogTimerAlwaysOn },
+    { highFuse, 0x01, descExternalResetDisable }, 
+    
+    { lowFuse,  0x80, descDivideClockBy8 },
+    { lowFuse,  0x40, descClockOutput },
+  
+    // special (combined) bits
+    { lowFuse,  0x30, NULL, fStartUpTime },
+    { lowFuse,  0x0F, NULL, fClockSource },
+  
+    { highFuse, 0x0E, NULL, fBrownoutDetectorLevel },
+    
+  };  // end of ATtiny4313_fuses
+ 
+fuseMeaning PROGMEM ATtiny13_fuses [] = 
+  {
+    { highFuse, 0x10, descSelfProgrammingEnable },
+    { highFuse, 0x08, descDebugWireEnable },
+    { highFuse, 0x01, descExternalResetDisable }, 
+    
+    { lowFuse,  0x80, descSerialProgrammingEnable },
+    { lowFuse,  0x40, descEEPROMsave },
+    { lowFuse,  0x20, descWatchdogTimerAlwaysOn },
+    { lowFuse,  0x10, descDivideClockBy8 },
+  
+    // special (combined) bits
+    { lowFuse,  0x0C, NULL, fStartUpTime },
+    { lowFuse,  0x03, NULL, fClockSource },
+  
+    { highFuse, 0x06, NULL, fBrownoutDetectorLevel },
+    
+  };  // end of ATtiny13_fuses
+   
 // structure for information about a single processor
 typedef struct {
    byte sig [3];
@@ -309,7 +352,7 @@ typedef struct {
 const unsigned long kb = 1024;
 
 // see Atmega328 datasheet page 298
-signatureType signatures [] = 
+const signatureType signatures [] = 
   {
 //     signature          description   flash size  bootloader size
 
@@ -348,6 +391,13 @@ signatureType signatures [] =
   
   // ATmega1284P family
   { { 0x1E, 0x97, 0x05 }, "ATmega1284P", 128 * kb,   1 * kb, ATmega164P_fuses, NUMITEMS (ATmega164P_fuses) },  // same as ATmega164P
+  
+  // ATtiny4313 family
+  { { 0x1E, 0x91, 0x0A }, "ATtiny2313A", 2 * kb,   0, ATtiny4313_fuses, NUMITEMS (ATtiny4313_fuses) },
+  { { 0x1E, 0x92, 0x0D }, "ATtiny4313",  4 * kb,   0, ATtiny4313_fuses, NUMITEMS (ATtiny4313_fuses) },
+  
+  // ATtiny13 family
+  { { 0x1E, 0x90, 0x07 }, "ATtiny13A",   1 * kb,   0, ATtiny13_fuses, NUMITEMS (ATtiny13_fuses) },
   
   };  // end of signatures
 
@@ -481,7 +531,17 @@ void showFuseMeanings ()
       
     // some fuses use multiple bits so we'll call a special handling function
     if (thisFuse.specialHandler)
-      thisFuse.specialHandler (fuses [val] & mask, mask, signatures [foundSig].baseBootSize);
+      {
+       // get value into low-order bits
+        byte adjustedVal = fuses [val] & mask;
+        while ((mask & 1) == 0)
+          {
+          adjustedVal >>= 1;
+          mask >>= 1;
+          }
+        
+        thisFuse.specialHandler (adjustedVal, signatures [foundSig].baseBootSize);
+      }  // end if special handler
      
     } // end of for each fuse meaning
     
@@ -493,6 +553,7 @@ void getFuseBytes ()
   fuses [highFuse] = program (readHighFuseByte, readHighFuseByteArg2);
   fuses [extFuse] = program (readExtendedFuseByte, readExtendedFuseByteArg2);
   fuses [lockByte] = program (readLockByte, readLockByteArg2);
+  fuses [calibrationByte]  = program (readCalibrationByte);  
   
   Serial.print ("LFuse = ");
   showHex (fuses [lowFuse], true);
@@ -502,6 +563,9 @@ void getFuseBytes ()
   showHex (fuses [extFuse], true);
   Serial.print ("Lock byte = ");
   showHex (fuses [lockByte], true);
+  Serial.print (F("Clock calibration = "));
+  showHex (fuses [calibrationByte], true);
+  
   }  // end of getFuseBytes
 
 void setup ()
