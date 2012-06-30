@@ -9,6 +9,7 @@
 // Version 1.4: Output an 8 MHz clock on pin 9
 // Version 1.5: Corrected flash size for Atmega1284P.
 // Version 1.6: Added signatures for ATtiny2313A, ATtiny4313, ATtiny13
+// Version 1.7: Added signature for Atmega8A
 
 /*
 
@@ -128,6 +129,9 @@ const signatureType signatures [] =
   
   // ATtiny13 family
   { { 0x1E, 0x90, 0x07 }, "ATtiny13A",   1 * kb,   0 },
+  
+  // Atmega8A family
+  { { 0x1E, 0x93, 0x07 }, "ATmega8A",    8 * kb, 256 },
   
   };  // end of signatures
 

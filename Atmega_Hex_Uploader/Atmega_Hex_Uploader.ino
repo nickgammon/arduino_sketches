@@ -16,6 +16,7 @@
 // Version 1.9: Ensure in programming mode before access flash (eg. if reset removed to test)
 //              Added reading of clock calibration byte (note: this cannot be changed)
 // Version 1.10: Added signatures for ATtiny2313A, ATtiny4313, ATtiny13
+// Version 1.11: Added signature for Atmega8
 
 /*
 
@@ -55,7 +56,7 @@
 
 // #include <memdebug.h>
 
-const char Version [] = "1.10";
+const char Version [] = "1.11";
 
 // bit banged SPI pins
 const byte MSPIM_SCK = 4;  // port D bit 4
@@ -196,6 +197,9 @@ const signatureType PROGMEM signatures [] =
   // ATtiny13 family
   { { 0x1E, 0x90, 0x07 }, "ATtiny13A",     1 * kb,        0,    32,  NO_FUSE },
  
+   // Atmega8A family
+  { { 0x1E, 0x93, 0x07 }, "ATmega8A",      8 * kb,      256,    64,  highFuse },
+
   };  // end of signatures
 
 char name[MAX_FILENAME] = { 0 };  // current file name

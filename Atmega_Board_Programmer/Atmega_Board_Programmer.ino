@@ -1,7 +1,7 @@
 // Atmega chip programmer
 // Author: Nick Gammon
 // Date: 22nd May 2012
-// Version: 1.12
+// Version: 1.13
 
 // Version 1.1: Reset foundSig to -1 each time around the loop.
 // Version 1.2: Put hex bootloader data into separate files
@@ -15,6 +15,7 @@
 // Version 1.10: Corrected flash size for Atmega1284P.
 // Version 1.11: Added support for Atmega1280. Removed MD5SUM stuff to make room.
 // Version 1.12: Added signatures for ATtiny2313A, ATtiny4313, ATtiny13
+// Version 1.13: Added signature for Atmega8A
 
 /*
 
@@ -202,6 +203,10 @@ signatureType signatures [] =
   
   // ATtiny13 family
   { { 0x1E, 0x90, 0x07 }, "ATtiny13A",     1 * kb, 0 },
+  
+  // Atmega8A family
+  { { 0x1E, 0x93, 0x07 }, "ATmega8A",     8 * kb, 256 },
+  
   
   };  // end of signatures
 

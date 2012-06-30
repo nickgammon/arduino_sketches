@@ -6,6 +6,8 @@
 // Version 1.1: Output an 8 MHz clock on pin 9
 // Version 1.2: Corrected flash size for Atmega1284P.
 // Version 1.3: Added signatures for ATtiny2313A, ATtiny4313, ATtiny13
+// Version 1.4: Added signature for Atmega8A
+//              Fixed bug in displaying bootloader size
 
 /*
 
@@ -103,13 +105,16 @@ char PROGMEM descSelfProgrammingEnable   [] = "Self Programming Enable";
 char PROGMEM descHardwareBootEnable      [] = "Hardare Boot Enable";
 char PROGMEM descOCDEnable               [] = "OCD Enable";
 char PROGMEM descJtagEnable              [] = "JTAG Enable";
+char PROGMEM descOscillatorOptions       [] = "Oscillator Options";
+char PROGMEM descBrownOutDetectorEnable  [] = "Brown out detector enable";
+char PROGMEM descBrownOutDetectorLevel   [] = "Brown out detector level";
 
 // calculate size of bootloader
 void fBootloaderSize (const byte val, const unsigned int bootLoaderSize)
   {
   Serial.print (F("Bootloader size: "));  
   unsigned int len = bootLoaderSize;
-  switch (val >> 1)
+  switch (val & 3)
     {
     case 0: len *= 8; break;  
     case 1: len *= 4; break;  
@@ -185,6 +190,23 @@ void fClockSource (const byte val, const unsigned int bootLoaderSize)
     }  // end of switch
   
   } // end of fClockSource
+
+// work out clock source (Atmega8A)
+void fClockSource2 (const byte val, const unsigned int bootLoaderSize)
+  {
+  Serial.print (F("Clock source: "));  
+  switch (val)
+    {
+    case 0b1010 ... 0b1111: Serial.println (F("low-power crystal."));   break;
+    case 0b1001           : Serial.println (F("low-frequency crystal."));       break;
+    case 0b0101 ... 0b1000: Serial.println (F("external RC oscillator."));       break;
+    case 0b0001 ... 0b0100: Serial.println (F("calibrated internal oscillator."));       break;
+    case 0b0000:            Serial.println (F("external clock."));       break;
+    default:                Serial.println (F("reserved."));   break;
+    }  // end of switch
+  
+  } // end of fClockSource2
+
   
 // fuses for various processors
 
@@ -338,6 +360,26 @@ fuseMeaning PROGMEM ATtiny13_fuses [] =
     { highFuse, 0x06, NULL, fBrownoutDetectorLevel },
     
   };  // end of ATtiny13_fuses
+
+fuseMeaning PROGMEM ATmega8_fuses [] = 
+  {
+    { highFuse, 0x80, descExternalResetDisable }, 
+    { highFuse, 0x40, descWatchdogTimerAlwaysOn },
+    { highFuse, 0x20, descSelfProgrammingEnable },
+    { highFuse, 0x10, descOscillatorOptions },
+    { highFuse, 0x80, descEEPROMsave },
+    { highFuse, 0x01, descBootIntoBootloader },
+
+    { lowFuse,  0x80, descBrownOutDetectorLevel },
+    { lowFuse,  0x40, descBrownOutDetectorEnable },
+  
+    // special (combined) bits
+    { highFuse, 0x06, NULL, fBootloaderSize },
+
+    { lowFuse,  0x30, NULL, fStartUpTime },
+    { lowFuse,  0x0F, NULL, fClockSource2 },
+  
+  };  // end of ATmega8_fuses
    
 // structure for information about a single processor
 typedef struct {
@@ -398,6 +440,9 @@ const signatureType signatures [] =
   
   // ATtiny13 family
   { { 0x1E, 0x90, 0x07 }, "ATtiny13A",   1 * kb,   0, ATtiny13_fuses, NUMITEMS (ATtiny13_fuses) },
+  
+  // Atmega8A family
+  { { 0x1E, 0x93, 0x07 }, "ATmega8A",    8 * kb, 256, ATmega8_fuses, NUMITEMS (ATmega8_fuses) },
   
   };  // end of signatures
 
