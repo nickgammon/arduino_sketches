@@ -1,13 +1,14 @@
 // Atmega chip fuse caculator
 // Author: Nick Gammon
-// Date: 222nd May 2012
-// Version: 1.3
+// Date: 22nd May 2012
+// Version: 1.5
 
 // Version 1.1: Output an 8 MHz clock on pin 9
 // Version 1.2: Corrected flash size for Atmega1284P.
 // Version 1.3: Added signatures for ATtiny2313A, ATtiny4313, ATtiny13
 // Version 1.4: Added signature for Atmega8A
 //              Fixed bug in displaying bootloader size
+// Version 1.5: Added signature for Atmega32U4
 
 /*
 
@@ -158,6 +159,26 @@ void fBrownoutDetectorLevelAtmega8U2 (const byte val, const unsigned int bootLoa
   
   } // end of fBrownoutDetectorLevelAtmega8U2
 
+// show brownout level (alternative)
+void fBrownoutDetectorLevelAtmega32U4 (const byte val, const unsigned int bootLoaderSize)
+  {
+  Serial.print (F("Brownout detection at: "));  
+  switch (val)
+    {
+    case 0b111: Serial.println (F("disabled."));   break;
+    case 0b110: Serial.println (F("2.0V."));       break;
+    case 0b101: Serial.println (F("2.2V."));       break;
+    case 0b100: Serial.println (F("2.4V."));       break;
+    case 0b011: Serial.println (F("2.6V."));       break;
+    case 0b010: Serial.println (F("3.4V."));       break;
+    case 0b001: Serial.println (F("3.5V."));       break;
+    case 0b000: Serial.println (F("4.3V."));       break;
+    default:    Serial.println (F("reserved."));   break;
+    }  // end of switch
+  
+  } // end of fBrownoutDetectorLevelAtmega32U4
+
+
 // show clock start-up times
 void fStartUpTime (const byte val, const unsigned int bootLoaderSize)
   {
@@ -300,6 +321,30 @@ fuseMeaning PROGMEM ATmega8U2_fuses [] =
     
   };  // end of ATmega8U2_fuses  
   
+fuseMeaning PROGMEM ATmega32U4_fuses [] = 
+  {
+    
+    { extFuse,  0x08, descHardwareBootEnable }, 
+      
+    { highFuse, 0x80, descOCDEnable },
+    { highFuse, 0x40, descJtagEnable }, 
+    { highFuse, 0x20, descSerialProgrammingEnable },
+    { highFuse, 0x10, descWatchdogTimerAlwaysOn },
+    { highFuse, 0x08, descEEPROMsave },
+    { highFuse, 0x01, descBootIntoBootloader },
+    
+    { lowFuse,  0x80, descDivideClockBy8 },
+    { lowFuse,  0x40, descClockOutput },
+  
+    // special (combined) bits
+    { highFuse, 0x06, NULL, fBootloaderSize },
+    { lowFuse,  0x30, NULL, fStartUpTime },
+    { lowFuse,  0x0F, NULL, fClockSource },
+    { extFuse,  0x07, NULL, fBrownoutDetectorLevelAtmega32U4 },
+  
+    
+  };  // end of ATmega32U4_fuses  
+  
 fuseMeaning PROGMEM ATmega164P_fuses [] = 
   {
    
@@ -430,6 +475,10 @@ const signatureType signatures [] =
   { { 0x1E, 0x93, 0x89 }, "ATmega8U2",    8 * kb,   512, ATmega8U2_fuses, NUMITEMS (ATmega8U2_fuses) },
   { { 0x1E, 0x94, 0x89 }, "ATmega16U2",  16 * kb,   512, ATmega8U2_fuses, NUMITEMS (ATmega8U2_fuses) },  // same as ATmega8U2
   { { 0x1E, 0x95, 0x8A }, "ATmega32U2",  32 * kb,   512, ATmega8U2_fuses, NUMITEMS (ATmega8U2_fuses) },  // same as ATmega8U2
+  
+  // Atmega32U4 family
+  { { 0x1E, 0x94, 0x88 }, "ATmega16U4",  16 * kb,   512 },
+  { { 0x1E, 0x95, 0x87 }, "ATmega32U4",  32 * kb,   512 },
   
   // ATmega1284P family
   { { 0x1E, 0x97, 0x05 }, "ATmega1284P", 128 * kb,   1 * kb, ATmega164P_fuses, NUMITEMS (ATmega164P_fuses) },  // same as ATmega164P

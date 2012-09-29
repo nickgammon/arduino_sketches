@@ -17,6 +17,7 @@
 //              Added reading of clock calibration byte (note: this cannot be changed)
 // Version 1.10: Added signatures for ATtiny2313A, ATtiny4313, ATtiny13
 // Version 1.11: Added signature for Atmega8
+// Version 1.11: Added signature for Atmega32U4
 
 /*
 
@@ -56,7 +57,7 @@
 
 // #include <memdebug.h>
 
-const char Version [] = "1.11";
+const char Version [] = "1.12";
 
 // bit banged SPI pins
 const byte MSPIM_SCK = 4;  // port D bit 4
@@ -186,6 +187,10 @@ const signatureType PROGMEM signatures [] =
   { { 0x1E, 0x93, 0x89 }, "ATmega8U2",    8 * kb,       512,   128,  highFuse  },
   { { 0x1E, 0x94, 0x89 }, "ATmega16U2",  16 * kb,       512,   128,  highFuse  },
   { { 0x1E, 0x95, 0x8A }, "ATmega32U2",  32 * kb,       512,   128,  highFuse  },
+
+  // Atmega32U4 family
+  { { 0x1E, 0x94, 0x88 }, "ATmega16U4",  16 * kb,       512,   128,  highFuse },
+  { { 0x1E, 0x95, 0x87 }, "ATmega32U4",  32 * kb,       512,   128,  highFuse },
 
   // ATmega1284P family
   { { 0x1E, 0x97, 0x05 }, "ATmega1284P", 128 * kb,   1 * kb,   256,  highFuse  },

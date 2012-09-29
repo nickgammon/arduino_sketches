@@ -186,6 +186,10 @@ signatureType signatures [] =
   { { 0x1E, 0x94, 0x89 }, "ATmega16U2",  16 * kb,   512 },
   { { 0x1E, 0x95, 0x8A }, "ATmega32U2",  32 * kb,   512 },
 
+  // Atmega32U4 family
+  { { 0x1E, 0x94, 0x88 }, "ATmega16U4",  16 * kb,   512 },
+  { { 0x1E, 0x95, 0x87 }, "ATmega32U4",  32 * kb,   512 },
+
   // ATmega1284P family
   { { 0x1E, 0x97, 0x05 }, "ATmega1284P", 128 * kb,   1 * kb,
         optiboot_atmega1284p_hex,
