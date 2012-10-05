@@ -477,8 +477,8 @@ const signatureType signatures [] =
   { { 0x1E, 0x95, 0x8A }, "ATmega32U2",  32 * kb,   512, ATmega8U2_fuses, NUMITEMS (ATmega8U2_fuses) },  // same as ATmega8U2
   
   // Atmega32U4 family
-  { { 0x1E, 0x94, 0x88 }, "ATmega16U4",  16 * kb,   512 },
-  { { 0x1E, 0x95, 0x87 }, "ATmega32U4",  32 * kb,   512 },
+  { { 0x1E, 0x94, 0x88 }, "ATmega16U4",  16 * kb,   512, ATmega32U4_fuses, NUMITEMS (ATmega32U4_fuses) },
+  { { 0x1E, 0x95, 0x87 }, "ATmega32U4",  32 * kb,   512, ATmega32U4_fuses, NUMITEMS (ATmega32U4_fuses) },
   
   // ATmega1284P family
   { { 0x1E, 0x97, 0x05 }, "ATmega1284P", 128 * kb,   1 * kb, ATmega164P_fuses, NUMITEMS (ATmega164P_fuses) },  // same as ATmega164P
