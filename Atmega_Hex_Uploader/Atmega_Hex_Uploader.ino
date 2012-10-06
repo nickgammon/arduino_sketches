@@ -18,6 +18,9 @@
 // Version 1.10: Added signatures for ATtiny2313A, ATtiny4313, ATtiny13
 // Version 1.11: Added signature for Atmega8
 // Version 1.11: Added signature for Atmega32U4
+// Version 1.12: Added option to allow target to run when not being programmed
+
+const bool allowTargetToRun = true;  // if true, programming lines are freed when not programming
 
 /*
 
@@ -783,6 +786,24 @@ void startProgramming ()
   Serial.println (F("Entered programming mode OK."));
   }  // end of startProgramming
 
+void stopProgramming ()
+  {
+  // turn off pull-ups
+  digitalWrite (RESET, LOW);  
+  digitalWrite (MSPIM_SCK, LOW);
+  digitalWrite (BB_MOSI, LOW);
+  digitalWrite (BB_MISO, LOW);
+  
+  // set everything back to inputs
+  pinMode (RESET, INPUT);
+  pinMode (MSPIM_SCK, INPUT);
+  pinMode (BB_MOSI, INPUT);
+  pinMode (BB_MISO, INPUT);
+  
+  Serial.println (F("Programming mode off."));
+    
+  } // end of startProgramming
+  
 void getSignature ()
   {
   foundSig = -1;
@@ -1378,6 +1399,10 @@ void loop ()
   while (Serial.available ())
     Serial.read ();
   
+  // turn off programming outputs if required
+  if (allowTargetToRun)
+    stopProgramming ();
+    
   char command;
   do
     {
@@ -1385,6 +1410,10 @@ void loop ()
     } while (!isalpha (command));
 
   Serial.println (command);  // echo their input
+  
+  // re-start programming mode if required
+  if (allowTargetToRun)
+    startProgramming ();
   
   switch (command)
     {
