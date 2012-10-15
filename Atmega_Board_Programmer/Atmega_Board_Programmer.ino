@@ -1,7 +1,7 @@
 // Atmega chip programmer
 // Author: Nick Gammon
 // Date: 22nd May 2012
-// Version: 1.13
+// Version: 1.14
 
 // Version 1.1: Reset foundSig to -1 each time around the loop.
 // Version 1.2: Put hex bootloader data into separate files
@@ -16,6 +16,7 @@
 // Version 1.11: Added support for Atmega1280. Removed MD5SUM stuff to make room.
 // Version 1.12: Added signatures for ATtiny2313A, ATtiny4313, ATtiny13
 // Version 1.13: Added signature for Atmega8A
+// Version 1.14: Added bootloader for Atmega8
 
 /*
 
@@ -112,6 +113,7 @@ const unsigned long kb = 1024;
 #include "bootloader_atmega1284.h"
 #include "bootloader_lilypad328.h"
 #include "bootloader_atmega1280.h"
+#include "bootloader_atmega8.h"
 
 // see Atmega328 datasheet page 298
 signatureType signatures [] = 
@@ -209,8 +211,15 @@ signatureType signatures [] =
   { { 0x1E, 0x90, 0x07 }, "ATtiny13A",     1 * kb, 0 },
   
   // Atmega8A family
-  { { 0x1E, 0x93, 0x07 }, "ATmega8A",     8 * kb, 256 },
-  
+  { { 0x1E, 0x93, 0x07 }, "ATmega8A",     8 * kb, 256,
+        atmega8_hex,
+        0x1C00,      // start address
+        sizeof atmega8_hex,       
+        64,           // page size (for committing)
+        0xD4,         // fuse low byte: external clock, max start-up time
+        0xCA,         // fuse high byte: SPI enable, boot into bootloader, 1024 byte bootloader
+        0xFD,         // fuse extended byte: brown-out detection at 2.7V
+        0x0F },       // lock bits: SPM is not allowed to write to the Boot Loader section.
   
   };  // end of signatures
 
