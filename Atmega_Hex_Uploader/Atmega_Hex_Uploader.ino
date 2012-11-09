@@ -19,6 +19,7 @@
 // Version 1.11: Added signature for Atmega8
 // Version 1.11: Added signature for Atmega32U4
 // Version 1.12: Added option to allow target to run when not being programmed
+// Version 1.13: Changed so you can set fuses without an SD card active.
 
 const bool allowTargetToRun = true;  // if true, programming lines are freed when not programming
 
@@ -60,7 +61,7 @@ const bool allowTargetToRun = true;  // if true, programming lines are freed whe
 
 // #include <memdebug.h>
 
-const char Version [] = "1.12";
+const char Version [] = "1.13";
 
 // bit banged SPI pins
 const byte MSPIM_SCK = 4;  // port D bit 4
@@ -320,6 +321,7 @@ int foundSig = -1;
 byte lastAddressMSB = 0;
 // copy of current signature entry for matching processor
 signatureType currentSignature;
+boolean haveSDcard;
 
 // execute one programming instruction ... b1 is command, b2, b3, b4 are arguments
 //  processor may return a result on the 4th transfer, this is returned.
@@ -953,6 +955,12 @@ boolean updateFuses (const boolean writeIt)
 
 void showDirectory ()
   {
+  if (!haveSDcard)
+    {
+    Serial.println (F("*** No SD card detected."));
+    return;
+    }
+    
   // list files in root directory
   
   SdFile file;
@@ -1028,9 +1036,15 @@ void setup ()
   // initialize the SD card at SPI_HALF_SPEED to avoid bus errors with
   // breadboards.  use SPI_FULL_SPEED for better performance.
   if (!sd.begin (chipSelect, SPI_HALF_SPEED)) 
-    sd.initErrorHalt();
-
-  showDirectory ();
+    {
+    sd.initErrorPrint();
+    haveSDcard = false;
+    }
+  else
+    {
+    haveSDcard = true;
+    showDirectory ();
+    }
   
 //  Serial.print (F("Free memory = "));
 //  Serial.println (getFreeMemory (), DEC);
@@ -1093,6 +1107,12 @@ boolean getYesNo ()
   
 void readFlashContents ()
   {
+  if (!haveSDcard)
+    {
+    Serial.println (F("*** No SD card detected."));
+    return;
+    }
+    
   progressBarCount = 0;
   pagesize = currentSignature.pageSize;
   pagemask = ~(pagesize - 1);
@@ -1219,6 +1239,12 @@ void readFlashContents ()
   
 void writeFlashContents ()
   {
+  if (!haveSDcard)
+    {
+    Serial.println (F("*** No SD card detected."));
+    return;
+    }
+    
   if (chooseInputFile ())
     return;  
 
@@ -1238,6 +1264,12 @@ void writeFlashContents ()
   
 void verifyFlashContents ()
   {
+  if (!haveSDcard)
+    {
+    Serial.println (F("*** No SD card detected."));
+    return;
+    }
+    
   if (chooseInputFile ())
     return;  
 
@@ -1389,10 +1421,13 @@ void loop ()
   Serial.println (F("Actions:"));
   Serial.println (F(" [E] erase flash"));
   Serial.println (F(" [F] modify fuses"));
-  Serial.println (F(" [L] list directory"));
-  Serial.println (F(" [R] read from flash (save to disk)"));
-  Serial.println (F(" [V] verify flash (compare to disk)"));
-  Serial.println (F(" [W] write to flash (read from disk)"));
+  if (haveSDcard)
+    {
+    Serial.println (F(" [L] list directory"));
+    Serial.println (F(" [R] read from flash (save to disk)"));
+    Serial.println (F(" [V] verify flash (compare to disk)"));
+    Serial.println (F(" [W] write to flash (read from disk)"));
+    }  // end of if SD card detected
   Serial.println (F("Enter action:"));
   
   // discard any old junk

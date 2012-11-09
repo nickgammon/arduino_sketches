@@ -299,6 +299,9 @@ void pollUntilReady ()
 // commit page
 void commitPage (unsigned long addr)
   {
+  Serial.print (F("Committing page starting at 0x"));
+  Serial.println (addr, HEX);
+
   addr >>= 1;  // turn into word address
   
   // set the extended (most significant) address byte if necessary
@@ -308,9 +311,6 @@ void commitPage (unsigned long addr)
     program (loadExtendedAddressByte, 0, MSB); 
     lastAddressMSB = MSB;
     }  // end if different MSB
-    
-  Serial.print (F("Committing page starting at 0x"));
-  Serial.println (addr, HEX);
   
   program (writeProgramMemory, highByte (addr), lowByte (addr));
   pollUntilReady (); 
@@ -364,7 +364,6 @@ void writeBootloader ()
   unsigned int  len = signatures [foundSig].loaderLength;
   unsigned long pagesize = signatures [foundSig].pageSize;
   unsigned long pagemask = ~(pagesize - 1);
-  unsigned long oldPage = addr & pagemask;
   byte * bootloader = signatures [foundSig].bootloader;
 
    
@@ -398,6 +397,8 @@ void writeBootloader ()
     else
       Serial.println (F("Using Uno Optiboot 16 MHz loader."));
      }  // end of being Atmega328P
+
+  unsigned long oldPage = addr & pagemask;
 
   Serial.println (F("Type 'V' to verify, or 'G' to program the chip with the bootloader ..."));
   char command;
