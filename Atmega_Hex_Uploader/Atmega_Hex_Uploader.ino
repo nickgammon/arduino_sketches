@@ -20,6 +20,7 @@
 // Version 1.11: Added signature for Atmega32U4
 // Version 1.12: Added option to allow target to run when not being programmed
 // Version 1.13: Changed so you can set fuses without an SD card active.
+// Version 1.14: Changed SPI writing to have pause before and after setting SCK low
 
 const bool allowTargetToRun = true;  // if true, programming lines are freed when not programming
 
@@ -61,7 +62,7 @@ const bool allowTargetToRun = true;  // if true, programming lines are freed whe
 
 // #include <memdebug.h>
 
-const char Version [] = "1.13";
+const char Version [] = "1.14";
 
 // bit banged SPI pins
 const byte MSPIM_SCK = 4;  // port D bit 4
@@ -310,6 +311,9 @@ byte BB_SPITransfer (byte c)
  
     // clock low
     BB_SCK_PORT &= ~_BV (BB_SCK_BIT);
+
+    // delay between rise and fall of clock
+    delayMicroseconds (BB_DELAY_MICROSECONDS);
     }
    
   return c;
