@@ -21,6 +21,7 @@
 // Version 1.12: Added option to allow target to run when not being programmed
 // Version 1.13: Changed so you can set fuses without an SD card active.
 // Version 1.14: Changed SPI writing to have pause before and after setting SCK low
+// Version 1.15: Remembers last file name uploaded in EEPROM
 
 const bool allowTargetToRun = true;  // if true, programming lines are freed when not programming
 
@@ -60,9 +61,11 @@ const bool allowTargetToRun = true;  // if true, programming lines are freed whe
 // for SDFat library see: http://code.google.com/p/beta-lib/downloads/list
 #include <SdFat.h>
 
+#include <avr/eeprom.h>
+
 // #include <memdebug.h>
 
-const char Version [] = "1.14";
+const char Version [] = "1.15";
 
 // bit banged SPI pins
 const byte MSPIM_SCK = 4;  // port D bit 4
@@ -115,6 +118,7 @@ const uint8_t chipSelect = SS;
 
 const unsigned long NO_PAGE = 0xFFFFFFFF;
 const int MAX_FILENAME = 13;
+const int LAST_FILENAME_LOCATION_IN_EEPROM = 0;
 
 // actions to take
 enum {
@@ -1014,6 +1018,8 @@ void showDirectory ()
     
   }  // end of showDirectory
   
+char lastFileName [MAX_FILENAME] = { 0 };
+  
 //------------------------------------------------------------------------------
 //      SETUP
 //------------------------------------------------------------------------------
@@ -1053,9 +1059,22 @@ void setup ()
 //  Serial.print (F("Free memory = "));
 //  Serial.println (getFreeMemory (), DEC);
   
+  // find what filename they used last
+  eeprom_read_block (&lastFileName, LAST_FILENAME_LOCATION_IN_EEPROM, MAX_FILENAME);
+  lastFileName [MAX_FILENAME - 1] = 0;  // ensure terminating null
+  
+  // ensure file name valid
+  for (byte i = 0; i < strlen (lastFileName); i++)
+    {
+    if (!isprint (lastFileName [i]))
+      {
+      lastFileName [0] = 0;
+      break; 
+      }  
+    }
+  
 }  // end of setup
 
-char lastFileName [MAX_FILENAME] = { 0 };
 
 
 boolean chooseInputFile ()
@@ -1079,6 +1098,14 @@ boolean chooseInputFile ()
   
   // remember name for next time
   memcpy (lastFileName, name, sizeof lastFileName);
+  
+  char fileNameInEEPROM [MAX_FILENAME];
+  eeprom_read_block (&fileNameInEEPROM, LAST_FILENAME_LOCATION_IN_EEPROM, MAX_FILENAME);
+  fileNameInEEPROM [MAX_FILENAME - 1] = 0;  // ensure terminating null
+  
+  // save new file name if it changed from what we have saved
+  if (strcmp (fileNameInEEPROM, lastFileName) != 0)
+    eeprom_write_block (&lastFileName, LAST_FILENAME_LOCATION_IN_EEPROM, MAX_FILENAME);
   
   // check file would fit into device memory
   if (highestAddress > currentSignature.flashSize)
