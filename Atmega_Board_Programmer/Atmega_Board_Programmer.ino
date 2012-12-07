@@ -1,7 +1,7 @@
 // Atmega chip programmer
 // Author: Nick Gammon
 // Date: 22nd May 2012
-// Version: 1.14
+// Version: 1.15
 
 // Version 1.1: Reset foundSig to -1 each time around the loop.
 // Version 1.2: Put hex bootloader data into separate files
@@ -17,6 +17,7 @@
 // Version 1.12: Added signatures for ATtiny2313A, ATtiny4313, ATtiny13
 // Version 1.13: Added signature for Atmega8A
 // Version 1.14: Added bootloader for Atmega8
+// Version 1.15: Removed extraneous 0xFF from some files
 
 /*
 
