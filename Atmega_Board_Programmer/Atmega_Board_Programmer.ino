@@ -18,6 +18,7 @@
 // Version 1.13: Added signature for Atmega8A
 // Version 1.14: Added bootloader for Atmega8
 // Version 1.15: Removed extraneous 0xFF from some files
+// Version 1.16: Added signature for Atmega328
 
 /*
 
@@ -154,6 +155,16 @@ signatureType signatures [] =
         0x05,         // fuse extended byte: brown-out detection at 2.7V
         0x2F },       // lock bits: SPM is not allowed to write to the Boot Loader section.
 
+  { { 0x1E, 0x95, 0x14 }, "ATmega328",  32 * kb,       512, 
+        atmega328_optiboot,   // loader image
+        0x7E00,               // start address
+        sizeof atmega328_optiboot, 
+        128,          // page size (for committing)
+        0xFF,         // fuse low byte: external clock, max start-up time
+        0xDE,         // fuse high byte: SPI enable, boot into bootloader, 512 byte bootloader
+        0x05,         // fuse extended byte: brown-out detection at 2.7V
+        0x2F },       // lock bits: SPM is not allowed to write to the Boot Loader section.
+        
   // Atmega644 family
   { { 0x1E, 0x94, 0x0A }, "ATmega164P",   16 * kb,      256 },
   { { 0x1E, 0x95, 0x08 }, "ATmega324P",   32 * kb,      512 },
@@ -376,9 +387,11 @@ void writeBootloader ()
 
   byte subcommand = 'U';
   
+  // Atmega328P or Atmega328
   if (signatures [foundSig].sig [0] == 0x1E &&
       signatures [foundSig].sig [1] == 0x95 &&
-      signatures [foundSig].sig [2] == 0x0F)
+      (signatures [foundSig].sig [2] == 0x0F || signatures [foundSig].sig [2] == 0x14)
+      )
     {
     Serial.println (F("Type 'L' to use Lilypad (8 MHz) loader, or 'U' for Uno (16 MHz) loader ..."));   
     do
