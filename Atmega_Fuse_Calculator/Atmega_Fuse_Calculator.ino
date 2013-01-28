@@ -1,7 +1,7 @@
 // Atmega chip fuse caculator
 // Author: Nick Gammon
 // Date: 22nd May 2012
-// Version: 1.5
+// Version: 1.6
 
 // Version 1.1: Output an 8 MHz clock on pin 9
 // Version 1.2: Corrected flash size for Atmega1284P.
@@ -9,6 +9,7 @@
 // Version 1.4: Added signature for Atmega8A
 //              Fixed bug in displaying bootloader size
 // Version 1.5: Added signature for Atmega32U4
+// Version 1.6: Allowed for running on the Leonardo, Micro, etc.
 
 /*
 
@@ -665,6 +666,7 @@ void getFuseBytes ()
 void setup ()
   {
   Serial.begin (115200);
+  while (!Serial) ;  // for Leonardo, Micro etc.
   Serial.println ();
   Serial.println (F("Atmega fuse calculator."));
   Serial.println (F("Written by Nick Gammon."));

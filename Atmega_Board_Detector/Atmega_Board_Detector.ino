@@ -1,7 +1,7 @@
 // Atmega chip fuse detector
 // Author: Nick Gammon
 // Date: 22nd May 2012
-// Version: 1.6
+// Version: 1.8
 
 // Version 1.1 added signatures for Attiny24/44/84 (5 May 2012)
 // Version 1.2 added signatures for ATmeag8U2/16U2/32U2 (7 May 2012)
@@ -10,6 +10,7 @@
 // Version 1.5: Corrected flash size for Atmega1284P.
 // Version 1.6: Added signatures for ATtiny2313A, ATtiny4313, ATtiny13
 // Version 1.7: Added signature for Atmega8A
+// Version 1.8: Allowed for running on the Leonardo, Micro, etc.
 
 /*
 
@@ -368,6 +369,7 @@ void getFuseBytes ()
 void setup ()
   {
   Serial.begin (115200);
+  while (!Serial) ;  // for Leonardo, Micro etc.
   Serial.println ();
   Serial.println ("Atmega chip detector.");
  

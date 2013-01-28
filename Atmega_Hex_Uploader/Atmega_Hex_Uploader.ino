@@ -1,7 +1,7 @@
 // Atmega hex file uploader (from SD card)
 // Author: Nick Gammon
 // Date: 22nd May 2012
-// Version: 1.10     // NB update 'Version' variable below!
+// Version: 1.16     // NB update 'Version' variable below!
 
 // Version 1.1: Some code cleanups as suggested on the Arduino forum.
 // Version 1.2: Cleared temporary flash area to 0xFF before doing each page
@@ -22,9 +22,12 @@
 // Version 1.13: Changed so you can set fuses without an SD card active.
 // Version 1.14: Changed SPI writing to have pause before and after setting SCK low
 // Version 1.15: Remembers last file name uploaded in EEPROM
+// Version 1.16: Allowed for running on the Leonardo, Micro, etc.
 
 const bool allowTargetToRun = true;  // if true, programming lines are freed when not programming
 
+#define ALLOW_MODIFY_FUSES true   // make false if this sketch doesn't fit into memory
+#define ALLOW_FILE_SAVING true    // make false if this sketch doesn't fit into memory
 /*
 
  For more details, photos, wiring, instructions, see:
@@ -65,7 +68,7 @@ const bool allowTargetToRun = true;  // if true, programming lines are freed whe
 
 // #include <memdebug.h>
 
-const char Version [] = "1.15";
+const char Version [] = "1.16";
 
 // bit banged SPI pins
 const byte MSPIM_SCK = 4;  // port D bit 4
@@ -1026,6 +1029,7 @@ char lastFileName [MAX_FILENAME] = { 0 };
 void setup () 
   {
   Serial.begin(115200);
+  while (!Serial) ;  // for Leonardo, Micro etc.
 
   Serial.println ();
   Serial.println ();
@@ -1136,6 +1140,7 @@ boolean getYesNo ()
   return strcmp (response, "YES") == 0;
   }  // end of getYesNo
   
+#if ALLOW_FILE_SAVING  
 void readFlashContents ()
   {
   if (!haveSDcard)
@@ -1267,7 +1272,8 @@ void readFlashContents ()
   Serial.print (name);
   Serial.println (F(" saved."));
   }  // end of readFlashContents
-  
+#endif
+
 void writeFlashContents ()
   {
   if (!haveSDcard)
@@ -1332,6 +1338,7 @@ void eraseFlashContents ()
     
   }  // end of eraseFlashContents
 
+#if ALLOW_MODIFY_FUSES    
 void modifyFuses ()
   {
   // display current fuses
@@ -1426,7 +1433,8 @@ void modifyFuses ()
   getFuseBytes ();
     
   }  // end of modifyFuses
-  
+#endif
+
 //------------------------------------------------------------------------------
 //      LOOP
 //------------------------------------------------------------------------------
@@ -1451,11 +1459,15 @@ void loop ()
  // ask for verify or write
   Serial.println (F("Actions:"));
   Serial.println (F(" [E] erase flash"));
+#if ALLOW_MODIFY_FUSES    
   Serial.println (F(" [F] modify fuses"));
+#endif
   if (haveSDcard)
     {
     Serial.println (F(" [L] list directory"));
+#if ALLOW_FILE_SAVING    
     Serial.println (F(" [R] read from flash (save to disk)"));
+#endif
     Serial.println (F(" [V] verify flash (compare to disk)"));
     Serial.println (F(" [W] write to flash (read from disk)"));
     }  // end of if SD card detected
@@ -1483,10 +1495,12 @@ void loop ()
   
   switch (command)
     {
+#if ALLOW_FILE_SAVING      
     case 'R': 
       readFlashContents (); 
       break; 
-      
+#endif
+
     case 'W': 
       writeFlashContents (); 
       break; 
@@ -1498,10 +1512,11 @@ void loop ()
     case 'E': 
       eraseFlashContents (); 
       break; 
-    
+#if ALLOW_MODIFY_FUSES    
     case 'F': 
       modifyFuses (); 
       break; 
+#endif
 
    case 'L':
       showDirectory ();

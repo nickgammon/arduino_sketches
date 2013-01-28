@@ -1,7 +1,7 @@
 // Atmega chip programmer
 // Author: Nick Gammon
 // Date: 22nd May 2012
-// Version: 1.15
+// Version: 1.17
 
 // Version 1.1: Reset foundSig to -1 each time around the loop.
 // Version 1.2: Put hex bootloader data into separate files
@@ -19,6 +19,7 @@
 // Version 1.14: Added bootloader for Atmega8
 // Version 1.15: Removed extraneous 0xFF from some files
 // Version 1.16: Added signature for Atmega328
+// Version 1.17: Allowed for running on the Leonardo, Micro, etc.
 
 /*
 
@@ -559,6 +560,7 @@ void getSignature ()
 void setup ()
   {
   Serial.begin (BAUD_RATE);
+  while (!Serial) ;  // for Leonardo, Micro etc.
   Serial.println ();
   Serial.println (F("Atmega chip programmer."));
   Serial.println (F("Written by Nick Gammon."));
