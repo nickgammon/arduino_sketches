@@ -1,7 +1,7 @@
 // Atmega chip programmer
 // Author: Nick Gammon
 // Date: 22nd May 2012
-// Version: 1.17
+// Version: 1.18
 
 // Version 1.1: Reset foundSig to -1 each time around the loop.
 // Version 1.2: Put hex bootloader data into separate files
@@ -20,6 +20,7 @@
 // Version 1.15: Removed extraneous 0xFF from some files
 // Version 1.16: Added signature for Atmega328
 // Version 1.17: Allowed for running on the Leonardo, Micro, etc.
+// Version 1.18: Added timed writing for Atmega8
 
 /*
 
@@ -105,6 +106,7 @@ typedef struct {
    unsigned int loaderLength;  // bytes
    unsigned long pageSize;     // bytes
    byte lowFuse, highFuse, extFuse, lockByte;
+   byte timedWrites;    // if pollUntilReady won't work by polling the chip
 } signatureType;
 
 const unsigned long kb = 1024;
@@ -229,10 +231,11 @@ signatureType signatures [] =
         0x1C00,      // start address
         sizeof atmega8_hex,       
         64,           // page size (for committing)
-        0xD4,         // fuse low byte: external clock, max start-up time
+        0xE4,         // fuse low byte: external clock, max start-up time
         0xCA,         // fuse high byte: SPI enable, boot into bootloader, 1024 byte bootloader
         0xFD,         // fuse extended byte: brown-out detection at 2.7V
-        0x0F },       // lock bits: SPM is not allowed to write to the Boot Loader section.
+        0x0F,         // lock bits: SPM is not allowed to write to the Boot Loader section.
+        true },       // need to do timed writes, not polled ones
   
   };  // end of signatures
 
@@ -305,8 +308,13 @@ void showYesNo (const boolean b, const boolean newline = false)
 // poll the target device until it is ready to be programmed
 void pollUntilReady ()
   {
-  while ((program (pollReady) & 1) == 1)
-    {}  // wait till ready
+  if (signatures [foundSig].timedWrites)
+    delay (10);  // at least 2 x WD_FLASH which is 4.5 mS
+  else
+    {  
+    while ((program (pollReady) & 1) == 1)
+      {}  // wait till ready  
+    }  // end of if
   }  // end of pollUntilReady
   
 // commit page
@@ -425,6 +433,17 @@ void writeBootloader ()
   if (command == 'G')
     {
       
+    // for Atmega8, fix up fuse to run faster, then write to device
+    if (signatures [foundSig].timedWrites && lFuse != newlFuse)
+      {
+      Serial.println (F("Fixing fuse setting ..."));
+      writeFuse (newlFuse, writeLowFuseByte);
+      delay (1000);
+      digitalWrite (RESET, HIGH); // latch fuse
+      startProgramming ();
+      delay (1000);
+      }
+      
     Serial.println (F("Erasing chip ..."));
     program (progamEnable, chipErase);   // erase it
     pollUntilReady (); 
@@ -525,7 +544,7 @@ void startProgramming ()
     
   Serial.println (F("Entered programming mode OK."));
   }  // end of startProgramming
-
+ 
 void getSignature ()
   {
   foundSig = -1;
@@ -550,6 +569,8 @@ void getSignature ()
       Serial.print (F("Flash memory size = "));
       Serial.print (signatures [j].flashSize, DEC);
       Serial.println (F(" bytes."));
+      if (signatures [foundSig].timedWrites)
+        Serial.println (F("Writes are timed, not polled."));
       return;
       }  // end of signature found
     }  // end of for each signature
