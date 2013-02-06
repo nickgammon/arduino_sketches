@@ -446,6 +446,7 @@ void writeBootloader ()
       
     Serial.println (F("Erasing chip ..."));
     program (progamEnable, chipErase);   // erase it
+    delay (20);  // for Atmega8
     pollUntilReady (); 
     Serial.println (F("Writing bootloader ..."));
     for (i = 0; i < len; i += 2)

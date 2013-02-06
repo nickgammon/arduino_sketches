@@ -1,7 +1,7 @@
 // Atmega hex file uploader (from SD card)
 // Author: Nick Gammon
 // Date: 22nd May 2012
-// Version: 1.16     // NB update 'Version' variable below!
+// Version: 1.17     // NB update 'Version' variable below!
 
 // Version 1.1: Some code cleanups as suggested on the Arduino forum.
 // Version 1.2: Cleared temporary flash area to 0xFF before doing each page
@@ -23,6 +23,7 @@
 // Version 1.14: Changed SPI writing to have pause before and after setting SCK low
 // Version 1.15: Remembers last file name uploaded in EEPROM
 // Version 1.16: Allowed for running on the Leonardo, Micro, etc.
+// Version 1.17: Added timed writing for Atmega8
 
 const bool allowTargetToRun = true;  // if true, programming lines are freed when not programming
 
@@ -68,7 +69,7 @@ const bool allowTargetToRun = true;  // if true, programming lines are freed whe
 
 // #include <memdebug.h>
 
-const char Version [] = "1.16";
+const char Version [] = "1.17";
 
 // bit banged SPI pins
 const byte MSPIM_SCK = 4;  // port D bit 4
@@ -153,6 +154,7 @@ typedef struct {
    unsigned int baseBootSize;
    unsigned long pageSize;     // bytes
    byte fuseWithBootloaderSize;  // ie. one of: lowFuse, highFuse, extFuse
+   byte timedWrites;    // if pollUntilReady won't work by polling the chip
 } signatureType;
 
 const unsigned long kb = 1024;
@@ -215,7 +217,7 @@ const signatureType PROGMEM signatures [] =
   { { 0x1E, 0x90, 0x07 }, "ATtiny13A",     1 * kb,        0,    32,  NO_FUSE },
  
    // Atmega8A family
-  { { 0x1E, 0x93, 0x07 }, "ATmega8A",      8 * kb,      256,    64,  highFuse },
+  { { 0x1E, 0x93, 0x07 }, "ATmega8A",      8 * kb,      256,    64,  highFuse, true },
 
   };  // end of signatures
 
@@ -416,8 +418,13 @@ boolean hexConv (const char * (& pStr), byte & b)
 // poll the target device until it is ready to be programmed
 void pollUntilReady ()
   {
-  while ((program (pollReady) & 1) == 1)
-    {}  // wait till ready
+  if (signatures [foundSig].timedWrites)
+    delay (10);  // at least 2 x WD_FLASH which is 4.5 mS
+  else
+    {  
+    while ((program (pollReady) & 1) == 1)
+      {}  // wait till ready  
+    }  // end of if
   }  // end of pollUntilReady
 
 unsigned long pagesize;
@@ -688,6 +695,7 @@ boolean readHexFile (const char * fName, const byte action)
     case writeToFlash:
       Serial.println (F("Erasing chip ..."));
       program (progamEnable, chipErase);   // erase it
+      delay (20);  // for Atmega8
       pollUntilReady (); 
       clearPage();  // clear temporary page
       Serial.println (F("Writing flash ..."));
@@ -1332,6 +1340,7 @@ void eraseFlashContents ()
     
   Serial.println (F("Erasing chip ..."));
   program (progamEnable, chipErase);   // erase it
+  delay (20);  // for Atmega8
   pollUntilReady (); 
 
   Serial.println (F("Flash memory erased."));
