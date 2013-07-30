@@ -24,6 +24,7 @@
 // Version 1.15: Remembers last file name uploaded in EEPROM
 // Version 1.16: Allowed for running on the Leonardo, Micro, etc.
 // Version 1.17: Added timed writing for Atmega8
+// Version 1.18: Added support for running on an Atmega2560
 
 const bool allowTargetToRun = true;  // if true, programming lines are freed when not programming
 
@@ -72,10 +73,19 @@ const bool allowTargetToRun = true;  // if true, programming lines are freed whe
 const char Version [] = "1.17";
 
 // bit banged SPI pins
-const byte MSPIM_SCK = 4;  // port D bit 4
-const byte MSPIM_SS  = 5;  // port D bit 5
-const byte BB_MISO   = 6;  // port D bit 6
-const byte BB_MOSI   = 7;  // port D bit 7
+#ifdef __AVR_ATmega2560__
+  // Atmega2560
+  const byte MSPIM_SCK = 4;  // port G bit 5
+  const byte MSPIM_SS  = 5;  // port E bit 3
+  const byte BB_MISO   = 6;  // port H bit 3
+  const byte BB_MOSI   = 7;  // port H bit 4
+#else
+  // Atmega328
+  const byte MSPIM_SCK = 4;  // port D bit 4
+  const byte MSPIM_SS  = 5;  // port D bit 5
+  const byte BB_MISO   = 6;  // port D bit 6
+  const byte BB_MOSI   = 7;  // port D bit 7
+#endif
 
 // 8 MHz clock on this pin
 const byte CLOCKOUT = 9;
@@ -102,13 +112,24 @@ Both SD card and target processor will need +5V and Gnd connected.
 
 */
 
-// for fast port access (Atmega328)
-#define BB_MISO_PORT PIND
-#define BB_MOSI_PORT PORTD
-#define BB_SCK_PORT PORTD
-const byte BB_SCK_BIT = 4;
-const byte BB_MISO_BIT = 6;
-const byte BB_MOSI_BIT = 7;
+// for fast port access
+#ifdef __AVR_ATmega2560__
+  // Atmega2560
+  #define BB_MISO_PORT PINH
+  #define BB_MOSI_PORT PORTH
+  #define BB_SCK_PORT PORTG
+  const byte BB_SCK_BIT = 5;
+  const byte BB_MISO_BIT = 3;
+  const byte BB_MOSI_BIT = 4;
+#else
+  // Atmega328
+  #define BB_MISO_PORT PIND
+  #define BB_MOSI_PORT PORTD
+  #define BB_SCK_PORT PORTD
+  const byte BB_SCK_BIT = 4;
+  const byte BB_MISO_BIT = 6;
+  const byte BB_MOSI_BIT = 7;
+#endif
 
 // control speed of programming
 const byte BB_DELAY_MICROSECONDS = 4;
