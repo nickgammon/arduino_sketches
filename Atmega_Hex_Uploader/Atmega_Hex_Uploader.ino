@@ -70,7 +70,7 @@ const bool allowTargetToRun = true;  // if true, programming lines are freed whe
 
 // #include <memdebug.h>
 
-const char Version [] = "1.17";
+const char Version [] = "1.18";
 
 // bit banged SPI pins
 #ifdef __AVR_ATmega2560__
