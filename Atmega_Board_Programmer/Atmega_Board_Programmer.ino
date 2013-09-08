@@ -1,7 +1,7 @@
 // Atmega chip programmer
 // Author: Nick Gammon
 // Date: 22nd May 2012
-// Version: 1.18
+// Version: 1.19
 
 // Version 1.1: Reset foundSig to -1 each time around the loop.
 // Version 1.2: Put hex bootloader data into separate files
@@ -21,6 +21,7 @@
 // Version 1.16: Added signature for Atmega328
 // Version 1.17: Allowed for running on the Leonardo, Micro, etc.
 // Version 1.18: Added timed writing for Atmega8
+// Version 1.19: Changed Atmega1280 to use the Optiboot loader.
 
 /*
 
@@ -176,12 +177,12 @@ signatureType signatures [] =
   // Atmega2560 family
   { { 0x1E, 0x96, 0x08 }, "ATmega640",    64 * kb,   1 * kb },
   { { 0x1E, 0x97, 0x03 }, "ATmega1280",  128 * kb,   1 * kb,
-        ATmegaBOOT_168_atmega1280_hex,
-        0x1F000,      // start address
-        sizeof ATmegaBOOT_168_atmega1280_hex,   
+        optiboot_atmega1280_hex,
+        0x1FC00,      // start address
+        sizeof optiboot_atmega1280_hex,   
         256,          // page size (for committing)
         0xFF,         // fuse low byte: external clock, max start-up time
-        0xDA,         // fuse high byte: SPI enable, boot into bootloader, 4096 byte bootloader
+        0xDE,         // fuse high byte: SPI enable, boot into bootloader, 1280 byte bootloader
         0xF5,         // fuse extended byte: brown-out detection at 2.7V
         0x2F },       // lock bits: SPM is not allowed to write to the Boot Loader section.
         
