@@ -25,11 +25,14 @@
 // Version 1.16: Allowed for running on the Leonardo, Micro, etc.
 // Version 1.17: Added timed writing for Atmega8
 // Version 1.18: Added support for running on an Atmega2560
+// Version 1.19: Added safety checks for high fuse, so you can't disable SPIEN or enable RSTDISBL etc.
 
 const bool allowTargetToRun = true;  // if true, programming lines are freed when not programming
 
 #define ALLOW_MODIFY_FUSES true   // make false if this sketch doesn't fit into memory
 #define ALLOW_FILE_SAVING true    // make false if this sketch doesn't fit into memory
+#define SAFETY_CHECKS true        // check for disabling SPIEN, or enabling RSTDISBL
+
 /*
 
  For more details, photos, wiring, instructions, see:
@@ -70,7 +73,7 @@ const bool allowTargetToRun = true;  // if true, programming lines are freed whe
 
 // #include <memdebug.h>
 
-const char Version [] = "1.18";
+const char Version [] = "1.19";
 
 // bit banged SPI pins
 #ifdef __AVR_ATmega2560__
@@ -1429,6 +1432,20 @@ void modifyFuses ()
     Serial.println (F("Same as original. No change requested."));
     return;  
     }  // end if no change to fuse
+
+#if SAFETY_CHECKS
+  if (fusenumber == highFuse && (newValue & 0xC0) != 0xC0)
+    {
+    Serial.println (F("Activating RSTDISBL/DWEN/OCDEN/JTAGEN not permitted."));
+    return;  
+    }  // end safety check
+
+  if (fusenumber == highFuse && (newValue & 0x40) != 0)
+    {
+    Serial.println (F("Disabling SPIEN not permitted."));
+    return;  
+    }  // end safety check
+#endif // SAFETY_CHECKS
 
   // get confirmation
   Serial.println (F("WARNING: Fuse changes may make the processor unresponsive."));
