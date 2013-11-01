@@ -26,6 +26,7 @@
 // Version 1.17: Added timed writing for Atmega8
 // Version 1.18: Added support for running on an Atmega2560
 // Version 1.19: Added safety checks for high fuse, so you can't disable SPIEN or enable RSTDISBL etc.
+// Version 1.20: Added support to ignore extra Intel Hex record types (4 and 5)
 
 const bool allowTargetToRun = true;  // if true, programming lines are freed when not programming
 
@@ -73,7 +74,7 @@ const bool allowTargetToRun = true;  // if true, programming lines are freed whe
 
 // #include <memdebug.h>
 
-const char Version [] = "1.19";
+const char Version [] = "1.20";
 
 // bit banged SPI pins
 #ifdef __AVR_ATmega2560__
@@ -316,7 +317,9 @@ enum {
     hexDataRecord,  // 00
     hexEndOfFile,   // 01
     hexExtendedSegmentAddressRecord, // 02
-    hexStartSegmentAddressRecord  // 03
+    hexStartSegmentAddressRecord,  // 03
+    hexExtendedLinearAddressRecord, // 04
+    hexStartLinearAddressRecord // 05
 };
 
 // Bit Banged SPI transfer
@@ -664,8 +667,10 @@ boolean processLine (const char * pLine, const byte action)
       extendedAddress = ((unsigned long) hexBuffer [4]) << 12;
       break;
       
-    // ignore this, who cares?
+    // ignore these, who cares?
     case hexStartSegmentAddressRecord:
+    case hexExtendedLinearAddressRecord:
+    case hexStartLinearAddressRecord:
       break;
         
     default:  
