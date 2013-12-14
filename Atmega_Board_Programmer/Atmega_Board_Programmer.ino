@@ -188,9 +188,9 @@ signatureType signatures [] =
         
   { { 0x1E, 0x97, 0x04 }, "ATmega1281",  128 * kb,   1 * kb },
   { { 0x1E, 0x98, 0x01 }, "ATmega2560",  256 * kb,   1 * kb, 
-        atmega2560_v2,// loader image
+        atmega2560_bootloader_hex,// loader image
         0x3E000,      // start address
-        sizeof atmega2560_v2,   
+        sizeof atmega2560_bootloader_hex,   
         256,          // page size (for committing)
         0xFF,         // fuse low byte: external clock, max start-up time
         0xD8,         // fuse high byte: SPI enable, boot into bootloader, 8192 byte bootloader
