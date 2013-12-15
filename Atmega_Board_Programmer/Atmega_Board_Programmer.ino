@@ -1,7 +1,7 @@
 // Atmega chip programmer
 // Author: Nick Gammon
 // Date: 22nd May 2012
-// Version: 1.19
+// Version: 1.20
 
 // Version 1.1: Reset foundSig to -1 each time around the loop.
 // Version 1.2: Put hex bootloader data into separate files
@@ -22,6 +22,9 @@
 // Version 1.17: Allowed for running on the Leonardo, Micro, etc.
 // Version 1.18: Added timed writing for Atmega8
 // Version 1.19: Changed Atmega1280 to use the Optiboot loader.
+// Version 1.20: Changed bootloader for Atmega2560 to fix problems with watchdog timer.
+
+#define VERSION "1.20"
 
 /*
 
@@ -587,6 +590,8 @@ void setup ()
   Serial.println ();
   Serial.println (F("Atmega chip programmer."));
   Serial.println (F("Written by Nick Gammon."));
+  Serial.println (F("Version " VERSION));
+  Serial.println (F("Compiled on " __DATE__ " at " __TIME__));
  
   digitalWrite (RESET, HIGH);  // ensure SS stays high for now
   SPI.begin ();
