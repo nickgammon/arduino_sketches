@@ -23,8 +23,9 @@
 // Version 1.18: Added timed writing for Atmega8
 // Version 1.19: Changed Atmega1280 to use the Optiboot loader.
 // Version 1.20: Changed bootloader for Atmega2560 to fix problems with watchdog timer.
+// Version 1.21: Automatically clear "divide by 8" fuse bit
 
-#define VERSION "1.20"
+#define VERSION "1.21"
 
 /*
 
@@ -437,10 +438,13 @@ void writeBootloader ()
   if (command == 'G')
     {
       
-    // for Atmega8, fix up fuse to run faster, then write to device
-    if (signatures [foundSig].timedWrites && lFuse != newlFuse)
+    // Automatically fix up fuse to run faster, then write to device
+    if (lFuse != newlFuse)
       {
-      Serial.println (F("Fixing fuse setting ..."));
+      if ((lFuse & 0x80) == 0)
+        Serial.println (F("Clearing 'Divide clock by 8' fuse bit."));
+      
+      Serial.println (F("Fixing low fuse setting ..."));
       writeFuse (newlFuse, writeLowFuseByte);
       delay (1000);
       digitalWrite (RESET, HIGH); // latch fuse
