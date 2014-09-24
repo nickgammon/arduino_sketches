@@ -1,7 +1,7 @@
 // Atmega hex file uploader (from SD card)
 // Author: Nick Gammon
 // Date: 22nd May 2012
-// Version: 1.17     // NB update 'Version' variable below!
+// Version: 1.21     // NB update 'Version' variable below!
 
 // Version 1.1: Some code cleanups as suggested on the Arduino forum.
 // Version 1.2: Cleared temporary flash area to 0xFF before doing each page
@@ -27,6 +27,7 @@
 // Version 1.18: Added support for running on an Atmega2560
 // Version 1.19: Added safety checks for high fuse, so you can't disable SPIEN or enable RSTDISBL etc.
 // Version 1.20: Added support to ignore extra Intel Hex record types (4 and 5)
+// Version 1.21: Fixed bug in pollUntilReady function
 
 const bool allowTargetToRun = true;  // if true, programming lines are freed when not programming
 
@@ -74,7 +75,7 @@ const bool allowTargetToRun = true;  // if true, programming lines are freed whe
 
 // #include <memdebug.h>
 
-const char Version [] = "1.20";
+const char Version [] = "1.21";
 
 // bit banged SPI pins
 #ifdef __AVR_ATmega2560__
@@ -187,7 +188,7 @@ const byte NO_FUSE = 0xFF;
 
 
 // see Atmega datasheets
-const signatureType PROGMEM signatures [] = 
+signatureType PROGMEM signatures [] = 
   {
 //     signature        description   flash size   bootloader  flash  fuse
 //                                                     size    page    to
@@ -445,7 +446,7 @@ boolean hexConv (const char * (& pStr), byte & b)
 // poll the target device until it is ready to be programmed
 void pollUntilReady ()
   {
-  if (signatures [foundSig].timedWrites)
+  if (currentSignature.timedWrites)
     delay (10);  // at least 2 x WD_FLASH which is 4.5 mS
   else
     {  
