@@ -188,7 +188,7 @@ const byte NO_FUSE = 0xFF;
 
 
 // see Atmega datasheets
-signatureType PROGMEM signatures [] = 
+const signatureType signatures [] PROGMEM = 
   {
 //     signature        description   flash size   bootloader  flash  fuse
 //                                                     size    page    to

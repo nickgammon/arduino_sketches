@@ -1,7 +1,7 @@
 // Atmega chip programmer
 // Author: Nick Gammon
 // Date: 22nd May 2012
-// Version: 1.20
+// Version: 1.22
 
 // Version 1.1: Reset foundSig to -1 each time around the loop.
 // Version 1.2: Put hex bootloader data into separate files
@@ -24,8 +24,9 @@
 // Version 1.19: Changed Atmega1280 to use the Optiboot loader.
 // Version 1.20: Changed bootloader for Atmega2560 to fix problems with watchdog timer.
 // Version 1.21: Automatically clear "divide by 8" fuse bit
+// Version 1.22: Fixed compiling problems under IDE 1.5.8
 
-#define VERSION "1.21"
+#define VERSION "1.22"
 
 /*
 
@@ -106,7 +107,7 @@ typedef struct {
    char * desc;
    unsigned long flashSize;
    unsigned int baseBootSize;
-   byte * bootloader;
+   const byte * bootloader;
    unsigned long loaderStart;  // bytes
    unsigned int loaderLength;  // bytes
    unsigned long pageSize;     // bytes
@@ -390,7 +391,7 @@ void writeBootloader ()
   unsigned int  len = signatures [foundSig].loaderLength;
   unsigned long pagesize = signatures [foundSig].pageSize;
   unsigned long pagemask = ~(pagesize - 1);
-  byte * bootloader = signatures [foundSig].bootloader;
+  const byte * bootloader = signatures [foundSig].bootloader;
 
    
   Serial.print (F("Bootloader address = 0x"));

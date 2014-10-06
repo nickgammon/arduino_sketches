@@ -10,6 +10,7 @@
 //              Fixed bug in displaying bootloader size
 // Version 1.5: Added signature for Atmega32U4
 // Version 1.6: Allowed for running on the Leonardo, Micro, etc.
+// Version 1.7: Fixed compiling problems under IDE 1.5.8
 
 /*
 
@@ -88,28 +89,28 @@ typedef void (*specialHandlerFunction) (const byte val, const unsigned int bootL
 typedef struct {
    byte whichFuse;
    byte mask;
-   char * meaningIfProgrammed;
+   const char * meaningIfProgrammed;
    specialHandlerFunction specialHandler;
   } fuseMeaning;
    
 
 // Messages stored in PROGMEM to save RAM
 
-char PROGMEM descExternalResetDisable    [] = "External Reset Disable";
-char PROGMEM descDebugWireEnable         [] = "Debug Wire Enable";
-char PROGMEM descSerialProgrammingEnable [] = "Enable Serial (ICSP) Programming";
-char PROGMEM descWatchdogTimerAlwaysOn   [] = "Watchdog Timer Always On";
-char PROGMEM descEEPROMsave              [] = "Preserve EEPROM through chip erase";
-char PROGMEM descBootIntoBootloader      [] = "Boot into bootloader";
-char PROGMEM descDivideClockBy8          [] = "Divide clock by 8";
-char PROGMEM descClockOutput             [] = "Clock output";
-char PROGMEM descSelfProgrammingEnable   [] = "Self Programming Enable";
-char PROGMEM descHardwareBootEnable      [] = "Hardare Boot Enable";
-char PROGMEM descOCDEnable               [] = "OCD Enable";
-char PROGMEM descJtagEnable              [] = "JTAG Enable";
-char PROGMEM descOscillatorOptions       [] = "Oscillator Options";
-char PROGMEM descBrownOutDetectorEnable  [] = "Brown out detector enable";
-char PROGMEM descBrownOutDetectorLevel   [] = "Brown out detector level";
+const char descExternalResetDisable    [] PROGMEM = "External Reset Disable";
+const char descDebugWireEnable         [] PROGMEM = "Debug Wire Enable";
+const char descSerialProgrammingEnable [] PROGMEM = "Enable Serial (ICSP) Programming";
+const char descWatchdogTimerAlwaysOn   [] PROGMEM = "Watchdog Timer Always On";
+const char descEEPROMsave              [] PROGMEM = "Preserve EEPROM through chip erase";
+const char descBootIntoBootloader      [] PROGMEM = "Boot into bootloader";
+const char descDivideClockBy8          [] PROGMEM = "Divide clock by 8";
+const char descClockOutput             [] PROGMEM = "Clock output";
+const char descSelfProgrammingEnable   [] PROGMEM = "Self Programming Enable";
+const char descHardwareBootEnable      [] PROGMEM = "Hardare Boot Enable";
+const char descOCDEnable               [] PROGMEM = "OCD Enable";
+const char descJtagEnable              [] PROGMEM = "JTAG Enable";
+const char descOscillatorOptions       [] PROGMEM = "Oscillator Options";
+const char descBrownOutDetectorEnable  [] PROGMEM = "Brown out detector enable";
+const char descBrownOutDetectorLevel   [] PROGMEM = "Brown out detector level";
 
 // calculate size of bootloader
 void fBootloaderSize (const byte val, const unsigned int bootLoaderSize)
@@ -232,7 +233,7 @@ void fClockSource2 (const byte val, const unsigned int bootLoaderSize)
   
 // fuses for various processors
 
-fuseMeaning PROGMEM ATmega48PA_fuses [] = 
+const fuseMeaning ATmega48PA_fuses [] PROGMEM = 
   {
     { extFuse,  0x01, descSelfProgrammingEnable },
   
@@ -253,7 +254,7 @@ fuseMeaning PROGMEM ATmega48PA_fuses [] =
     
   };  // end of ATmega48PA_fuses
   
-fuseMeaning PROGMEM ATmega88PA_fuses [] = 
+const fuseMeaning ATmega88PA_fuses [] PROGMEM = 
   {
   
     { highFuse, 0x80, descExternalResetDisable }, 
@@ -277,7 +278,7 @@ fuseMeaning PROGMEM ATmega88PA_fuses [] =
   };  // end of ATmega88PA_fuses 
   
     
-fuseMeaning PROGMEM ATmega328P_fuses [] = 
+const fuseMeaning ATmega328P_fuses [] PROGMEM = 
   {
     { highFuse, 0x80, descExternalResetDisable }, 
     { highFuse, 0x40, descDebugWireEnable },
@@ -298,7 +299,7 @@ fuseMeaning PROGMEM ATmega328P_fuses [] =
     
   };  // end of ATmega328P_fuses
   
-fuseMeaning PROGMEM ATmega8U2_fuses [] = 
+const fuseMeaning ATmega8U2_fuses [] PROGMEM = 
   {
     
     { extFuse,  0x08, descHardwareBootEnable }, 
@@ -322,7 +323,7 @@ fuseMeaning PROGMEM ATmega8U2_fuses [] =
     
   };  // end of ATmega8U2_fuses  
   
-fuseMeaning PROGMEM ATmega32U4_fuses [] = 
+const fuseMeaning ATmega32U4_fuses [] PROGMEM = 
   {
     
     { extFuse,  0x08, descHardwareBootEnable }, 
@@ -346,7 +347,7 @@ fuseMeaning PROGMEM ATmega32U4_fuses [] =
     
   };  // end of ATmega32U4_fuses  
   
-fuseMeaning PROGMEM ATmega164P_fuses [] = 
+const fuseMeaning ATmega164P_fuses [] PROGMEM = 
   {
    
     { highFuse, 0x80, descOCDEnable },
@@ -367,7 +368,7 @@ fuseMeaning PROGMEM ATmega164P_fuses [] =
     
   };  // end of ATmega164P_fuses  
   
-fuseMeaning PROGMEM ATtiny4313_fuses [] = 
+const fuseMeaning ATtiny4313_fuses [] PROGMEM = 
   {
     { extFuse,  0x01, descSelfProgrammingEnable },
   
@@ -388,7 +389,7 @@ fuseMeaning PROGMEM ATtiny4313_fuses [] =
     
   };  // end of ATtiny4313_fuses
  
-fuseMeaning PROGMEM ATtiny13_fuses [] = 
+const fuseMeaning ATtiny13_fuses [] PROGMEM = 
   {
     { highFuse, 0x10, descSelfProgrammingEnable },
     { highFuse, 0x08, descDebugWireEnable },
@@ -407,7 +408,7 @@ fuseMeaning PROGMEM ATtiny13_fuses [] =
     
   };  // end of ATtiny13_fuses
 
-fuseMeaning PROGMEM ATmega8_fuses [] = 
+const fuseMeaning ATmega8_fuses [] PROGMEM = 
   {
     { highFuse, 0x80, descExternalResetDisable }, 
     { highFuse, 0x40, descWatchdogTimerAlwaysOn },
@@ -433,7 +434,7 @@ typedef struct {
    char * desc;
    unsigned long flashSize;
    unsigned int baseBootSize;
-   fuseMeaning * fusesInfo;
+   const fuseMeaning * fusesInfo;
    int numberOfFuseInfo;
 } signatureType;
   
