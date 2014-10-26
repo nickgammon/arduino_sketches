@@ -1,7 +1,7 @@
 // Atmega chip programmer
 // Author: Nick Gammon
 // Date: 22nd May 2012
-// Version: 1.22
+// Version: 1.23
 
 // Version 1.1: Reset foundSig to -1 each time around the loop.
 // Version 1.2: Put hex bootloader data into separate files
@@ -25,8 +25,9 @@
 // Version 1.20: Changed bootloader for Atmega2560 to fix problems with watchdog timer.
 // Version 1.21: Automatically clear "divide by 8" fuse bit
 // Version 1.22: Fixed compiling problems under IDE 1.5.8
+// Version 1.23: Added support for Leonardo bootloader
 
-#define VERSION "1.22"
+#define VERSION "1.23"
 
 /*
 
@@ -125,6 +126,7 @@ const unsigned long kb = 1024;
 #include "bootloader_lilypad328.h"
 #include "bootloader_atmega1280.h"
 #include "bootloader_atmega8.h"
+#include "bootloader_atmega32u4.h"
 
 // see Atmega328 datasheet page 298
 signatureType signatures [] = 
@@ -211,7 +213,17 @@ signatureType signatures [] =
 
   // Atmega32U4 family
   { { 0x1E, 0x94, 0x88 }, "ATmega16U4",  16 * kb,   512 },
-  { { 0x1E, 0x95, 0x87 }, "ATmega32U4",  32 * kb,   512 },
+  { { 0x1E, 0x95, 0x87 }, "ATmega32U4",  32 * kb,   4 * kb,
+        leonardo_hex,// loader image
+        0x7000,      // start address
+        sizeof leonardo_hex,   
+        128,          // page size (for committing) (this does not agree with the datasheet)
+        0xFF,         // fuse low byte: external clock, max start-up time
+        0xD8,         // fuse high byte: SPI enable, boot into bootloader, 1280 byte bootloader
+        0xCB,         // fuse extended byte: brown-out detection at 2.6V
+        0x2F },       // lock bits: SPM is not allowed to write to the Boot Loader section.
+          
+
 
   // ATmega1284P family
   { { 0x1E, 0x97, 0x05 }, "ATmega1284P", 128 * kb,   1 * kb,
