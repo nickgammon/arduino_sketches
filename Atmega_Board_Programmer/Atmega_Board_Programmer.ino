@@ -150,7 +150,7 @@ signatureType signatures [] =
         atmega168_optiboot,   // loader image
         0x3E00,               // start address
         sizeof atmega168_optiboot, 
-        128,          // page size (for committing)
+        128,          // page size in bytes (for committing)
         0xC6,         // fuse low byte: external full-swing crystal
         0xDD,         // fuse high byte: SPI enable, brown-out detection at 2.7V
         0x04,         // fuse extended byte: boot into bootloader, 512 byte bootloader
@@ -160,7 +160,7 @@ signatureType signatures [] =
         atmega328_optiboot,   // loader image
         0x7E00,               // start address
         sizeof atmega328_optiboot, 
-        128,          // page size (for committing)
+        128,          // page size in bytes (for committing)
         0xFF,         // fuse low byte: external clock, max start-up time
         0xDE,         // fuse high byte: SPI enable, boot into bootloader, 512 byte bootloader
         0x05,         // fuse extended byte: brown-out detection at 2.7V
@@ -170,7 +170,7 @@ signatureType signatures [] =
         atmega328_optiboot,   // loader image
         0x7E00,               // start address
         sizeof atmega328_optiboot, 
-        128,          // page size (for committing)
+        128,          // page size in bytes (for committing)
         0xFF,         // fuse low byte: external clock, max start-up time
         0xDE,         // fuse high byte: SPI enable, boot into bootloader, 512 byte bootloader
         0x05,         // fuse extended byte: brown-out detection at 2.7V
@@ -187,7 +187,7 @@ signatureType signatures [] =
         optiboot_atmega1280_hex,
         0x1FC00,      // start address
         sizeof optiboot_atmega1280_hex,   
-        256,          // page size (for committing)
+        256,          // page size in bytes (for committing)
         0xFF,         // fuse low byte: external clock, max start-up time
         0xDE,         // fuse high byte: SPI enable, boot into bootloader, 1280 byte bootloader
         0xF5,         // fuse extended byte: brown-out detection at 2.7V
@@ -198,7 +198,7 @@ signatureType signatures [] =
         atmega2560_bootloader_hex,// loader image
         0x3E000,      // start address
         sizeof atmega2560_bootloader_hex,   
-        256,          // page size (for committing)
+        256,          // page size in bytes (for committing)
         0xFF,         // fuse low byte: external clock, max start-up time
         0xD8,         // fuse high byte: SPI enable, boot into bootloader, 8192 byte bootloader
         0xFD,         // fuse extended byte: brown-out detection at 2.7V
@@ -217,7 +217,7 @@ signatureType signatures [] =
         leonardo_hex,// loader image
         0x7000,      // start address
         sizeof leonardo_hex,   
-        128,          // page size (for committing) (this does not agree with the datasheet)
+        128,          // page size in bytes (for committing) (datasheet is wrong about it being 128 words)
         0xFF,         // fuse low byte: external clock, max start-up time
         0xD8,         // fuse high byte: SPI enable, boot into bootloader, 1280 byte bootloader
         0xCB,         // fuse extended byte: brown-out detection at 2.6V
@@ -230,7 +230,7 @@ signatureType signatures [] =
         optiboot_atmega1284p_hex,
         0x1FC00,      // start address
         sizeof optiboot_atmega1284p_hex,       
-        256,          // page size (for committing)
+        256,          // page size in bytes (for committing)
         0xFF,         // fuse low byte: external clock, max start-up time
         0xDE,         // fuse high byte: SPI enable, boot into bootloader, 1024 byte bootloader
         0xFD,         // fuse extended byte: brown-out detection at 2.7V
@@ -248,7 +248,7 @@ signatureType signatures [] =
         atmega8_hex,
         0x1C00,      // start address
         sizeof atmega8_hex,       
-        64,           // page size (for committing)
+        64,           // page size in bytes (for committing)
         0xE4,         // fuse low byte: external clock, max start-up time
         0xCA,         // fuse high byte: SPI enable, boot into bootloader, 1024 byte bootloader
         0xFD,         // fuse extended byte: brown-out detection at 2.7V

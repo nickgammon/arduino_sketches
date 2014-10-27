@@ -228,7 +228,7 @@ const signatureType signatures [] PROGMEM =
   { { 0x1E, 0x94, 0x89 }, "ATmega16U2",  16 * kb,       512,   128,  highFuse  },
   { { 0x1E, 0x95, 0x8A }, "ATmega32U2",  32 * kb,       512,   128,  highFuse  },
 
-  // Atmega32U4 family
+  // Atmega32U4 family -  (datasheet is wrong about flash page size being 128 words)
   { { 0x1E, 0x94, 0x88 }, "ATmega16U4",  16 * kb,       512,   128,  highFuse },
   { { 0x1E, 0x95, 0x87 }, "ATmega32U4",  32 * kb,       512,   128,  highFuse },
 
