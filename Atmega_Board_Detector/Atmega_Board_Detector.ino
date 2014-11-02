@@ -13,8 +13,9 @@
 // Version 1.8: Allowed for running on the Leonardo, Micro, etc.
 // Version 1.9: Fixed bug where wrong fuse was being checked for bootloader in some cases
 // Version 1.10: Added database of known signatures
+// Version 1.11: Added MD5 sum for Uno Atmega16U2 (USB) bootloader
 
-const char Version [] = "1.10";
+const char Version [] = "1.11";
 
 /*
 
@@ -209,6 +210,7 @@ const char Sanguino_ATmegaBOOT_644P             [] PROGMEM = "Sanguino_ATmegaBOO
 const char Sanguino_ATmegaBOOT_168_atmega644p   [] PROGMEM = "Sanguino_ATmegaBOOT_168_atmega644p";
 const char Sanguino_ATmegaBOOT_168_atmega1284p  [] PROGMEM = "Sanguino_ATmegaBOOT_168_atmega1284p";
 const char Sanguino_ATmegaBOOT_168_atmega1284p_8m [] PROGMEM = "Sanguino_ATmegaBOOT_168_atmega1284p_8m";
+const char  Arduino_dfu_usbserial_atmega16u2_Uno_Rev3 [] PROGMEM = "Arduino-dfu-usbserial-atmega16u2-Uno-Rev3";
 
 // Signatures (MD5 sums) for above bootloaders
 const deviceDatabaseType deviceDatabase [] PROGMEM = 
@@ -248,6 +250,7 @@ const deviceDatabaseType deviceDatabase [] PROGMEM =
   { { 0x60, 0x49, 0xC6, 0x0A, 0xE6, 0x31, 0x5C, 0xC1, 0xBA, 0xD7, 0x24, 0xEF, 0x8B, 0x6D, 0xE6, 0xD0,  }, Sanguino_ATmegaBOOT_168_atmega644p }, 
   { { 0xC1, 0x17, 0xE3, 0x5E, 0x9C, 0x43, 0x66, 0x5F, 0x1E, 0x4C, 0x41, 0x95, 0x44, 0x60, 0x47, 0xD5,  }, Sanguino_ATmegaBOOT_168_atmega1284p }, 
   { { 0x27, 0x4B, 0x68, 0x8A, 0x8A, 0xA2, 0x4C, 0xE7, 0x30, 0x7F, 0x97, 0x37, 0x87, 0x16, 0x4E, 0x21,  }, Sanguino_ATmegaBOOT_168_atmega1284p_8m }, 
+  { { 0xD8, 0x8C, 0x70, 0x6D, 0xFE, 0x1F, 0xDC, 0x38, 0x82, 0x1E, 0xCE, 0xAE, 0x23, 0xB2, 0xE6, 0xE7,  }, Arduino_dfu_usbserial_atmega16u2_Uno_Rev3 }, 
   };
 
 // Print a string from Program Memory directly to save RAM 
