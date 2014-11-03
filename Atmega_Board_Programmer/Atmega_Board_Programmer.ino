@@ -1,7 +1,9 @@
 // Atmega chip programmer
 // Author: Nick Gammon
 // Date: 22nd May 2012
-// Version: 1.24
+// Version: 1.25
+
+// For more information including wiring, see: http://www.gammon.com.au/forum/?id=11635
 
 // Version 1.1: Reset foundSig to -1 each time around the loop.
 // Version 1.2: Put hex bootloader data into separate files
@@ -27,8 +29,9 @@
 // Version 1.22: Fixed compiling problems under IDE 1.5.8
 // Version 1.23: Added support for Leonardo bootloader
 // Version 1.24: Added bootloader for Uno Atmega16U2 chip (the USB interface)
+// Version 1.25: Fixed bug re verifying uploaded sketch for the Lilypad
 
-#define VERSION "1.24"
+#define VERSION "1.25"
 
 /*
 
