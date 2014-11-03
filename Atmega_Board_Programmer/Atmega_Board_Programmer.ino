@@ -504,7 +504,7 @@ void writeBootloader ()
   // count errors
   unsigned int errors = 0;
   // check each byte
-  for (i = 0; i < signatures [foundSig].loaderLength; i++)
+  for (i = 0; i < len; i++)
     {
     byte found = readFlash (addr + i);
     byte expected = pgm_read_byte(bootloader + i);
