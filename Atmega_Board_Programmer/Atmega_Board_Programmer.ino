@@ -26,7 +26,7 @@
 // Version 1.21: Automatically clear "divide by 8" fuse bit
 // Version 1.22: Fixed compiling problems under IDE 1.5.8
 // Version 1.23: Added support for Leonardo bootloader
-// Version 1.24: Added bootloader for Uno Atmega32U4 chip (the USB interface)
+// Version 1.24: Added bootloader for Uno Atmega16U2 chip (the USB interface)
 
 #define VERSION "1.24"
 
@@ -128,7 +128,7 @@ const unsigned long kb = 1024;
 #include "bootloader_atmega1280.h"
 #include "bootloader_atmega8.h"
 #include "bootloader_atmega32u4.h"
-#include "bootloader_atmega32u2.h"  // Uno USB interface chip
+#include "bootloader_atmega16u2.h"  // Uno USB interface chip
 
 // see Atmega328 datasheet page 298
 signatureType signatures [] = 
