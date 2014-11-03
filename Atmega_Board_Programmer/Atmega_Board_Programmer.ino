@@ -1,7 +1,7 @@
 // Atmega chip programmer
 // Author: Nick Gammon
 // Date: 22nd May 2012
-// Version: 1.23
+// Version: 1.24
 
 // Version 1.1: Reset foundSig to -1 each time around the loop.
 // Version 1.2: Put hex bootloader data into separate files
@@ -26,8 +26,9 @@
 // Version 1.21: Automatically clear "divide by 8" fuse bit
 // Version 1.22: Fixed compiling problems under IDE 1.5.8
 // Version 1.23: Added support for Leonardo bootloader
+// Version 1.24: Added bootloader for Uno Atmega32U4 chip (the USB interface)
 
-#define VERSION "1.23"
+#define VERSION "1.24"
 
 /*
 
@@ -127,6 +128,7 @@ const unsigned long kb = 1024;
 #include "bootloader_atmega1280.h"
 #include "bootloader_atmega8.h"
 #include "bootloader_atmega32u4.h"
+#include "bootloader_atmega32u2.h"  // Uno USB interface chip
 
 // see Atmega328 datasheet page 298
 signatureType signatures [] = 
@@ -208,8 +210,17 @@ signatureType signatures [] =
   
   // Atmega32U2 family
   { { 0x1E, 0x93, 0x89 }, "ATmega8U2",    8 * kb,   512 },
-  { { 0x1E, 0x94, 0x89 }, "ATmega16U2",  16 * kb,   512 },
-  { { 0x1E, 0x95, 0x8A }, "ATmega32U2",  32 * kb,   512 },
+  { { 0x1E, 0x94, 0x89 }, "ATmega16U2",  16 * kb,   512,
+        Arduino_COMBINED_dfu_usbserial_atmega16u2_Uno_Rev3_hex,// loader image
+        0x3000,      // start address
+        sizeof Arduino_COMBINED_dfu_usbserial_atmega16u2_Uno_Rev3_hex,   
+        128,          // page size in bytes (for committing) 
+        0xEF,         // fuse low byte: external clock, m
+        0xD9,         // fuse high byte: SPI enable, NOT boot into bootloader, 4096 byte bootloader
+        0xF4,         // fuse extended byte: brown-out detection at 2.6V
+        0xCF },       // lock bits
+
+  { { 0x1E, 0x95, 0x8A }, "ATmega32U2",  32 * kb,   512,},
 
   // Atmega32U4 family
   { { 0x1E, 0x94, 0x88 }, "ATmega16U4",  16 * kb,   512 },
