@@ -1,7 +1,7 @@
 // Atmega chip programmer
 // Author: Nick Gammon
 // Date: 22nd May 2012
-// Version: 1.25
+// Version: 1.26
 
 // For more information including wiring, see: http://www.gammon.com.au/forum/?id=11635
 
@@ -30,8 +30,9 @@
 // Version 1.23: Added support for Leonardo bootloader
 // Version 1.24: Added bootloader for Uno Atmega16U2 chip (the USB interface)
 // Version 1.25: Fixed bug re verifying uploaded sketch for the Lilypad
+// Version 1.26: Turn off programming mode when done (so chip can run)
 
-#define VERSION "1.25"
+#define VERSION "1.26"
 
 /*
 
@@ -455,13 +456,17 @@ void writeBootloader ()
 
   unsigned long oldPage = addr & pagemask;
 
-  Serial.println (F("Type 'V' to verify, or 'G' to program the chip with the bootloader ..."));
+  Serial.println (F("Type 'Q' to quit, 'V' to verify, or 'G' to program the chip with the bootloader ..."));
   char command;
   do
     {
     command = toupper (Serial.read ());
-    } while (command != 'G' && command != 'V');
+    } while (command != 'G' && command != 'V' && command != 'Q');
 
+  // let them do nothing
+  if (command == 'Q')
+    return;
+    
   if (command == 'G')
     {
       
@@ -557,6 +562,11 @@ void writeBootloader ()
   
 void startProgramming ()
   {
+  Serial.println (F("Attempting to enter programming mode ..."));
+  digitalWrite (RESET, HIGH);  // ensure SS stays high for now
+  SPI.begin ();
+  SPI.setClockDivider (SPI_CLOCK_DIV64);
+    
   byte confirm;
   pinMode (RESET, OUTPUT);
   pinMode (SCK, OUTPUT);
@@ -581,6 +591,25 @@ void startProgramming ()
   Serial.println (F("Entered programming mode OK."));
   }  // end of startProgramming
  
+void stopProgramming ()
+  {
+  SPI.end ();
+  
+  // turn off pull-ups, if any
+  digitalWrite (RESET, LOW);  
+  digitalWrite (SCK,   LOW);
+  digitalWrite (MOSI,  LOW);
+  digitalWrite (MISO,  LOW);
+
+  // set everything back to inputs
+  pinMode (RESET, INPUT);
+  pinMode (SCK,   INPUT);
+  pinMode (MOSI,  INPUT);
+  pinMode (MISO,  INPUT);
+  
+  Serial.println (F("Programming mode off."));
+  } // end of startProgramming
+  
 void getSignature ()
   {
   foundSig = -1;
@@ -650,8 +679,7 @@ void loop ()
   if (foundSig != -1)
     writeBootloader ();
 
-  // release reset    
-  digitalWrite (RESET, HIGH);
+  stopProgramming ();
     
   Serial.println (F("Type 'C' when ready to continue with another chip ..."));
   while (toupper (Serial.read ()) != 'C') 
