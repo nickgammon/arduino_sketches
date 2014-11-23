@@ -1,7 +1,7 @@
 // Atmega hex file uploader (from SD card)
 // Author: Nick Gammon
 // Date: 22nd May 2012
-// Version: 1.21     // NB update 'Version' variable below!
+// Version: 1.22     // NB update 'Version' variable below!
 
 // Version 1.1: Some code cleanups as suggested on the Arduino forum.
 // Version 1.2: Cleared temporary flash area to 0xFF before doing each page
@@ -28,6 +28,7 @@
 // Version 1.19: Added safety checks for high fuse, so you can't disable SPIEN or enable RSTDISBL etc.
 // Version 1.20: Added support to ignore extra Intel Hex record types (4 and 5)
 // Version 1.21: Fixed bug in pollUntilReady function
+// Version 1.22: Cleaned up _BV() macro to use bit() macro instead for readability
 
 const bool allowTargetToRun = true;  // if true, programming lines are freed when not programming
 
@@ -75,7 +76,7 @@ const bool allowTargetToRun = true;  // if true, programming lines are freed whe
 
 // #include <memdebug.h>
 
-const char Version [] = "1.21";
+const char Version [] = "1.22";
 
 // bit banged SPI pins
 #ifdef __AVR_ATmega2560__
@@ -175,7 +176,7 @@ enum {
 // structure to hold signature and other relevant data about each chip
 typedef struct {
    byte sig [3];
-   char * desc;
+   const char * desc;
    unsigned long flashSize;
    unsigned int baseBootSize;
    unsigned long pageSize;     // bytes
@@ -332,22 +333,22 @@ byte BB_SPITransfer (byte c)
     {
     // write MOSI on falling edge of previous clock
     if (c & 0x80)
-        BB_MOSI_PORT |= _BV (BB_MOSI_BIT);
+        BB_MOSI_PORT |= bit (BB_MOSI_BIT);
     else
-        BB_MOSI_PORT &= ~_BV (BB_MOSI_BIT);
+        BB_MOSI_PORT &= ~bit (BB_MOSI_BIT);
     c <<= 1;
  
     // read MISO
-    c |= (BB_MISO_PORT & _BV (BB_MISO_BIT)) != 0;
+    c |= (BB_MISO_PORT & bit (BB_MISO_BIT)) != 0;
  
    // clock high
-    BB_SCK_PORT |= _BV (BB_SCK_BIT);
+    BB_SCK_PORT |= bit (BB_SCK_BIT);
  
     // delay between rise and fall of clock
     delayMicroseconds (BB_DELAY_MICROSECONDS);
  
     // clock low
-    BB_SCK_PORT &= ~_BV (BB_SCK_BIT);
+    BB_SCK_PORT &= ~bit (BB_SCK_BIT);
 
     // delay between rise and fall of clock
     delayMicroseconds (BB_DELAY_MICROSECONDS);
@@ -557,6 +558,32 @@ unsigned long highestAddress;
 unsigned long bytesWritten;
 unsigned int lineCount;
 
+/*
+Line format:
+
+  :nnaaaatt(data)ss
+  
+  Where:
+  :      = a colon
+  
+  (All of below in hex format)
+  
+  nn     = length of data part
+  aaaa   = address (eg. where to write data)
+  tt     = transaction type
+           00 = data
+           01 = end of file
+           02 = extended segment address (changes high-order byte of the address)
+           03 = start segment address *
+           04 = linear address *
+           05 = start linear address *
+  (data) = variable length data
+  ss     = sumcheck
+
+            * We don't use these
+   
+*/
+
 boolean processLine (const char * pLine, const byte action)
   {
   if (*pLine++ != ':')
@@ -639,7 +666,7 @@ boolean processLine (const char * pLine, const byte action)
     {
     // stuff to be written to memory
     case hexDataRecord:
-      lowestAddress = min (lowestAddress, addr + extendedAddress);
+      lowestAddress  = min (lowestAddress, addr + extendedAddress);
       highestAddress = max (lowestAddress, addr + extendedAddress + len - 1);
       bytesWritten += len;
     
@@ -1079,8 +1106,8 @@ void setup ()
   // set up 8 MHz timer on pin 9
   pinMode (CLOCKOUT, OUTPUT); 
   // set up Timer 1
-  TCCR1A = _BV (COM1A0);  // toggle OC1A on Compare Match
-  TCCR1B = _BV(WGM12) | _BV(CS10);   // CTC, no prescaling
+  TCCR1A = bit (COM1A0);  // toggle OC1A on Compare Match
+  TCCR1B = bit (WGM12) | bit (CS10);   // CTC, no prescaling
   OCR1A =  0;       // output every cycle
   
   Serial.println (F("Reading SD card ..."));
