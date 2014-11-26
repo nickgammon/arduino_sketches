@@ -1,7 +1,7 @@
 // Atmega chip programmer
 // Author: Nick Gammon
 // Date: 22nd May 2012
-// Version: 1.27
+// Version: 1.28
 
 // For more information including wiring, see: http://www.gammon.com.au/forum/?id=11635
 
@@ -32,8 +32,9 @@
 // Version 1.25: Fixed bug re verifying uploaded sketch for the Lilypad
 // Version 1.26: Turn off programming mode when done (so chip can run)
 // Version 1.27: Made bootloaders conditional, so you can omit some to save space
+// Version 1.28: Changed _BV () macro to bit () macro.
 
-#define VERSION "1.27"
+#define VERSION "1.28"
 
 // make some of these false to reduce compile size (the ones you don't want)
 // The Atmega328 is always included (Both Uno and Lilypad versions)
@@ -745,8 +746,8 @@ void setup ()
   pinMode (CLOCKOUT, OUTPUT);
 
   // set up Timer 1
-  TCCR1A = _BV (COM1A0);  // toggle OC1A on Compare Match
-  TCCR1B = _BV(WGM12) | _BV(CS10);   // CTC, no prescaling
+  TCCR1A = bit (COM1A0);  // toggle OC1A on Compare Match
+  TCCR1B = bit (WGM12) | bit (CS10);   // CTC, no prescaling
   OCR1A =  0;       // output every cycle
 
  }  // end of setup
