@@ -1,7 +1,7 @@
 // Atmega chip fuse caculator
 // Author: Nick Gammon
 // Date: 22nd May 2012
-// Version: 1.6
+// Version: 1.8
 
 // Version 1.1: Output an 8 MHz clock on pin 9
 // Version 1.2: Corrected flash size for Atmega1284P.
@@ -11,6 +11,7 @@
 // Version 1.5: Added signature for Atmega32U4
 // Version 1.6: Allowed for running on the Leonardo, Micro, etc.
 // Version 1.7: Fixed compiling problems under IDE 1.5.8
+// Version 1.8: Cleaned up bit () macro to use bit () macro instead for readability
 
 /*
 
@@ -681,8 +682,8 @@ void setup ()
   pinMode (CLOCKOUT, OUTPUT);
   
   // set up Timer 1
-  TCCR1A = _BV (COM1A0);  // toggle OC1A on Compare Match
-  TCCR1B = _BV(WGM12) | _BV(CS10);   // CTC, no prescaling
+  TCCR1A = bit (COM1A0);  // toggle OC1A on Compare Match
+  TCCR1B = bit (WGM12) | bit (CS10);   // CTC, no prescaling
   OCR1A =  0;       // output every cycle
   
   startProgramming ();

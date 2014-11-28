@@ -162,11 +162,11 @@ void readBootloader ()
   len = signatures [foundSig].baseBootSize;
   
   Serial.print (F("Bootloader in use: "));
-  showYesNo ((hFuse & _BV (0)) == 0, true);
+  showYesNo ((hFuse & bit (0)) == 0, true);
   Serial.print (F("EEPROM preserved through erase: "));
-  showYesNo ((hFuse & _BV (3)) == 0, true);
+  showYesNo ((hFuse & bit (3)) == 0, true);
   Serial.print (F("Watchdog timer always on: "));
-  showYesNo ((hFuse & _BV (4)) == 0, true);
+  showYesNo ((hFuse & bit (4)) == 0, true);
   
   // work out bootloader size
   // these 2 bits basically give a base bootloader size multiplier
