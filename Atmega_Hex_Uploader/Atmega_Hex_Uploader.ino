@@ -1,7 +1,7 @@
 // Atmega hex file uploader (from SD card)
 // Author: Nick Gammon
 // Date: 22nd May 2012
-// Version: 1.22     // NB update 'Version' variable below!
+// Version: 1.23     // NB update 'Version' variable below!
 
 // Version 1.1: Some code cleanups as suggested on the Arduino forum.
 // Version 1.2: Cleared temporary flash area to 0xFF before doing each page
@@ -29,6 +29,7 @@
 // Version 1.20: Added support to ignore extra Intel Hex record types (4 and 5)
 // Version 1.21: Fixed bug in pollUntilReady function
 // Version 1.22: Cleaned up _BV() macro to use bit() macro instead for readability
+// Version 1.23: Fixed bug regarding checking if you set the SPIEN bit (wrong value used)
 
 const bool allowTargetToRun = true;  // if true, programming lines are freed when not programming
 
@@ -76,7 +77,7 @@ const bool allowTargetToRun = true;  // if true, programming lines are freed whe
 
 // #include <memdebug.h>
 
-const char Version [] = "1.22";
+const char Version [] = "1.23";
 
 // bit banged SPI pins
 #ifdef __AVR_ATmega2560__
@@ -1473,7 +1474,7 @@ void modifyFuses ()
     return;  
     }  // end safety check
 
-  if (fusenumber == highFuse && (newValue & 0x40) != 0)
+  if (fusenumber == highFuse && (newValue & 0x20) != 0)
     {
     Serial.println (F("Disabling SPIEN not permitted."));
     return;  
