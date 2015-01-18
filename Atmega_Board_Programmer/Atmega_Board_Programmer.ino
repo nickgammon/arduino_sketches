@@ -1,7 +1,7 @@
 // Atmega chip programmer
 // Author: Nick Gammon
 // Date: 22nd May 2012
-// Version: 1.28
+// Version: 1.29
 
 // For more information including wiring, see: http://www.gammon.com.au/forum/?id=11635
 
@@ -33,8 +33,9 @@
 // Version 1.26: Turn off programming mode when done (so chip can run)
 // Version 1.27: Made bootloaders conditional, so you can omit some to save space
 // Version 1.28: Changed _BV () macro to bit () macro.
+// Version 1.29: Display message if cannot enter programming mode.
 
-#define VERSION "1.28"
+#define VERSION "1.29"
 
 // make some of these false to reduce compile size (the ones you don't want)
 // The Atmega328 is always included (Both Uno and Lilypad versions)
@@ -46,6 +47,8 @@
 #define USE_ATMEGA1280 true
 #define USE_ATMEGA1284 true
 #define USE_ATMEGA2560 true
+
+const int ENTER_PROGRAMMING_ATTEMPTS = 50;
 
 /*
 
@@ -564,7 +567,8 @@ void writeBootloader ()
       writeFuse (newlFuse, writeLowFuseByte);
       delay (1000);
       digitalWrite (RESET, HIGH); // latch fuse
-      startProgramming ();
+      if (!startProgramming ())
+        return;
       delay (1000);
       }
 
@@ -644,9 +648,9 @@ void writeBootloader ()
   } // end of writeBootloader
 
 
-void startProgramming ()
+bool startProgramming ()
   {
-  Serial.println (F("Attempting to enter programming mode ..."));
+  Serial.print (F("Attempting to enter programming mode ..."));
   digitalWrite (RESET, HIGH);  // ensure SS stays high for now
   SPI.begin ();
   SPI.setClockDivider (SPI_CLOCK_DIV64);
@@ -654,6 +658,7 @@ void startProgramming ()
   byte confirm;
   pinMode (RESET, OUTPUT);
   pinMode (SCK, OUTPUT);
+  unsigned int timeout = 0;
 
   // we are in sync if we get back programAcknowledge on the third byte
   do
@@ -670,9 +675,22 @@ void startProgramming ()
     SPI.transfer (programAcknowledge);
     confirm = SPI.transfer (0);
     SPI.transfer (0);
+    
+    if (confirm != programAcknowledge)
+      {
+      Serial.print (".");
+      if (timeout++ >= ENTER_PROGRAMMING_ATTEMPTS)
+        {
+        Serial.println ();
+        Serial.println (F("Failed to enter programming mode. Double-check wiring!"));
+        return false;
+        }  // end of too many attempts
+      }  // end of not entered programming mode
     } while (confirm != programAcknowledge);
 
+  Serial.println ();
   Serial.println (F("Entered programming mode OK."));
+  return true;
   }  // end of startProgramming
 
 void stopProgramming ()
@@ -692,7 +710,7 @@ void stopProgramming ()
   pinMode (MISO,  INPUT);
 
   Serial.println (F("Programming mode off."));
-  } // end of startProgramming
+  } // end of stopProgramming
 
 void getSignature ()
   {
@@ -755,14 +773,16 @@ void setup ()
 void loop ()
   {
 
-  startProgramming ();
-  getSignature ();
-  getFuseBytes ();
-
-  // if we found a signature try to write a bootloader
-  if (foundSig != -1)
-    writeBootloader ();
-
+  if (startProgramming ())
+    {
+    getSignature ();
+    getFuseBytes ();
+  
+    // if we found a signature try to write a bootloader
+    if (foundSig != -1)
+      writeBootloader ();
+    }
+    
   stopProgramming ();
 
   Serial.println (F("Type 'C' when ready to continue with another chip ..."));
