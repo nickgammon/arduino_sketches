@@ -1,7 +1,7 @@
 // Atmega chip fuse caculator
 // Author: Nick Gammon
 // Date: 22nd May 2012
-// Version: 1.8
+// Version: 1.9
 
 // Version 1.1: Output an 8 MHz clock on pin 9
 // Version 1.2: Corrected flash size for Atmega1284P.
@@ -11,7 +11,10 @@
 // Version 1.5: Added signature for Atmega32U4
 // Version 1.6: Allowed for running on the Leonardo, Micro, etc.
 // Version 1.7: Fixed compiling problems under IDE 1.5.8
-// Version 1.8: Cleaned up bit () macro to use bit () macro instead for readability
+// Version 1.8: Cleaned up _BV () macro to use bit () macro instead for readability
+// Version 1.9: Display message if cannot enter programming mode.
+
+#define VERSION "1.9"
 
 /*
 
@@ -45,6 +48,8 @@
 
 const byte CLOCKOUT = 9;
 const byte RESET = 10;  // --> goes to reset on the target board
+
+const int ENTER_PROGRAMMING_ATTEMPTS = 50;
 
 #if ARDUINO < 100
   const byte SCK = 13;    // SPI clock
@@ -526,14 +531,20 @@ void showHex (const byte b, const boolean newline = false)
     Serial.println ();
   }  // end of showHex 
   
-void startProgramming ()
+bool startProgramming ()
   {
+  Serial.print (F("Attempting to enter programming mode ..."));
+  digitalWrite (RESET, HIGH);  // ensure SS stays high for now
+  SPI.begin ();
+  SPI.setClockDivider (SPI_CLOCK_DIV64);
+
   byte confirm;
   pinMode (RESET, OUTPUT);
   pinMode (SCK, OUTPUT);
-  
+  unsigned int timeout = 0;
+
   // we are in sync if we get back programAcknowledge on the third byte
-  do 
+  do
     {
     delay (100);
     // ensure SCK low
@@ -543,13 +554,26 @@ void startProgramming ()
     delay (1);  // pulse for at least 2 clock cycles
     digitalWrite (RESET, LOW);
     delay (25);  // wait at least 20 mS
-    SPI.transfer (progamEnable);  
-    SPI.transfer (programAcknowledge);  
-    confirm = SPI.transfer (0);  
-    SPI.transfer (0);  
-    } while (confirm != programAcknowledge);
+    SPI.transfer (progamEnable);
+    SPI.transfer (programAcknowledge);
+    confirm = SPI.transfer (0);
+    SPI.transfer (0);
     
+    if (confirm != programAcknowledge)
+      {
+      Serial.print (".");
+      if (timeout++ >= ENTER_PROGRAMMING_ATTEMPTS)
+        {
+        Serial.println ();
+        Serial.println (F("Failed to enter programming mode. Double-check wiring!"));
+        return false;
+        }  // end of too many attempts
+      }  // end of not entered programming mode
+    } while (confirm != programAcknowledge);
+
+  Serial.println ();
   Serial.println (F("Entered programming mode OK."));
+  return true;
   }  // end of startProgramming
 
 void getSignature ()
@@ -672,13 +696,9 @@ void setup ()
   Serial.println ();
   Serial.println (F("Atmega fuse calculator."));
   Serial.println (F("Written by Nick Gammon."));
- 
-  digitalWrite(RESET, HIGH);  // ensure SS stays high for now
-  SPI.begin ();
-  
-  // slow down SPI for benefit of slower processors like the Attiny
-  SPI.setClockDivider(SPI_CLOCK_DIV64);
-  
+  Serial.println (F("Version " VERSION));
+  Serial.println (F("Compiled on " __DATE__ " at " __TIME__));
+
   pinMode (CLOCKOUT, OUTPUT);
   
   // set up Timer 1
@@ -686,12 +706,14 @@ void setup ()
   TCCR1B = bit (WGM12) | bit (CS10);   // CTC, no prescaling
   OCR1A =  0;       // output every cycle
   
-  startProgramming ();
-  getSignature ();
-  getFuseBytes ();
-  
-  if (foundSig != -1)
-    showFuseMeanings ();
+  if (startProgramming ())
+    {
+    getSignature ();
+    getFuseBytes ();
+    
+    if (foundSig != -1)
+      showFuseMeanings ();
+    }  // end of if entered programming mode OK
     
  }  // end of setup
 

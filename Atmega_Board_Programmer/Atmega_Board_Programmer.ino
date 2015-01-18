@@ -781,7 +781,7 @@ void loop ()
     // if we found a signature try to write a bootloader
     if (foundSig != -1)
       writeBootloader ();
-    }
+    }   // end of if entered programming mode OK
     
   stopProgramming ();
 

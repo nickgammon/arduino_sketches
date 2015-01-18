@@ -1,7 +1,7 @@
 // Atmega chip fuse detector
 // Author: Nick Gammon
 // Date: 22nd May 2012
-// Version: 1.10
+// Version: 1.12
 
 // Version 1.1 added signatures for Attiny24/44/84 (5 May 2012)
 // Version 1.2 added signatures for ATmeag8U2/16U2/32U2 (7 May 2012)
@@ -14,8 +14,9 @@
 // Version 1.9: Fixed bug where wrong fuse was being checked for bootloader in some cases
 // Version 1.10: Added database of known signatures
 // Version 1.11: Added MD5 sum for Uno Atmega16U2 (USB) bootloader
+// Version 1.12: Display message if cannot enter programming mode.
 
-const char Version [] = "1.11";
+const char Version [] = "1.12";
 
 /*
 
@@ -53,6 +54,8 @@ extern "C"
 
 const byte CLOCKOUT = 9;
 const byte RESET = 10;  // --> goes to reset on the target board
+
+const int ENTER_PROGRAMMING_ATTEMPTS = 50;
 
 #if ARDUINO < 100
   const byte SCK = 13;    // SPI clock
@@ -467,11 +470,17 @@ void readProgram ()
 
   } // end of readProgram
 
-void startProgramming ()
+bool startProgramming ()
   {
+  Serial.print (F("Attempting to enter programming mode ..."));
+  digitalWrite (RESET, HIGH);  // ensure SS stays high for now
+  SPI.begin ();
+  SPI.setClockDivider (SPI_CLOCK_DIV64);
+
   byte confirm;
   pinMode (RESET, OUTPUT);
   pinMode (SCK, OUTPUT);
+  unsigned int timeout = 0;
 
   // we are in sync if we get back programAcknowledge on the third byte
   do
@@ -488,9 +497,22 @@ void startProgramming ()
     SPI.transfer (programAcknowledge);
     confirm = SPI.transfer (0);
     SPI.transfer (0);
+    
+    if (confirm != programAcknowledge)
+      {
+      Serial.print (".");
+      if (timeout++ >= ENTER_PROGRAMMING_ATTEMPTS)
+        {
+        Serial.println ();
+        Serial.println (F("Failed to enter programming mode. Double-check wiring!"));
+        return false;
+        }  // end of too many attempts
+      }  // end of not entered programming mode
     } while (confirm != programAcknowledge);
 
+  Serial.println ();
   Serial.println (F("Entered programming mode OK."));
+  return true;
   }  // end of startProgramming
 
 void getSignature ()
@@ -549,12 +571,6 @@ void setup ()
   Serial.println (Version);
   Serial.println (F("Compiled on " __DATE__ " at " __TIME__));
 
-  digitalWrite(RESET, HIGH);  // ensure SS stays high for now
-  SPI.begin ();
-
-  // slow down SPI for benefit of slower processors like the Attiny
-  SPI.setClockDivider(SPI_CLOCK_DIV64);
-
   pinMode (CLOCKOUT, OUTPUT);
 
   // set up Timer 1
@@ -562,16 +578,19 @@ void setup ()
   TCCR1B = bit (WGM12) | bit (CS10);   // CTC, no prescaling
   OCR1A =  0;       // output every cycle
 
-  startProgramming ();
-  getSignature ();
-  getFuseBytes ();
-
-  if (foundSig != -1)
+  if (startProgramming ())
     {
-    readBootloader ();
-    }
-
-  readProgram ();
+    getSignature ();
+    getFuseBytes ();
+  
+    if (foundSig != -1)
+      {
+      readBootloader ();
+      }
+  
+    readProgram ();
+    }   // end of if entered programming mode OK
+    
  }  // end of setup
 
 void loop () {}

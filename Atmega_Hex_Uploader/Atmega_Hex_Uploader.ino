@@ -30,6 +30,7 @@
 // Version 1.21: Fixed bug in pollUntilReady function
 // Version 1.22: Cleaned up _BV() macro to use bit() macro instead for readability
 // Version 1.23: Fixed bug regarding checking if you set the SPIEN bit (wrong value used)
+// Version 1.24: Display message if cannot enter programming mode.
 
 const bool allowTargetToRun = true;  // if true, programming lines are freed when not programming
 
@@ -77,7 +78,9 @@ const bool allowTargetToRun = true;  // if true, programming lines are freed whe
 
 // #include <memdebug.h>
 
-const char Version [] = "1.23";
+const char Version [] = "1.24";
+
+const int ENTER_PROGRAMMING_ATTEMPTS = 50;
 
 // bit banged SPI pins
 #ifdef __AVR_ATmega2560__
@@ -828,15 +831,16 @@ boolean readHexFile (const char * fName, const byte action)
   return false;
 }  // end of readHexFile
 
-void startProgramming ()
+bool startProgramming ()
   {
-  Serial.println (F("Attempting to enter programming mode ..."));
+  Serial.print (F("Attempting to enter programming mode ..."));
     
   byte confirm;
   pinMode (RESET, OUTPUT);
   digitalWrite (MSPIM_SCK, LOW);
   pinMode (MSPIM_SCK, OUTPUT);
   pinMode (BB_MOSI, OUTPUT);
+  unsigned int timeout = 0;
   
   // we are in sync if we get back programAcknowledge on the third byte
   do 
@@ -860,8 +864,21 @@ void startProgramming ()
     confirm = BB_SPITransfer (0);  
     BB_SPITransfer (0);  
     interrupts ();
+    
+    if (confirm != programAcknowledge)
+      {
+      Serial.print (".");
+      if (timeout++ >= ENTER_PROGRAMMING_ATTEMPTS)
+        {
+        Serial.println ();
+        Serial.println (F("Failed to enter programming mode. Double-check wiring!"));
+        return false;
+        }  // end of too many attempts
+      }  // end of not entered programming mode
+    
     } while (confirm != programAcknowledge);
     
+  Serial.println ();
   Serial.println (F("Entered programming mode OK."));
   }  // end of startProgramming
 
@@ -881,7 +898,7 @@ void stopProgramming ()
   
   Serial.println (F("Programming mode off."));
     
-  } // end of startProgramming
+  } // end of stopProgramming
   
 void getSignature ()
   {
@@ -1103,6 +1120,7 @@ void setup ()
   Serial.println (F("Written by Nick Gammon."));
   Serial.print   (F("Version "));
   Serial.println (Version);
+  Serial.println (F("Compiled on " __DATE__ " at " __TIME__));
   
   // set up 8 MHz timer on pin 9
   pinMode (CLOCKOUT, OUTPUT); 
@@ -1250,7 +1268,8 @@ void readFlashContents ()
     }  // end of checking if file exists
   
   // ensure back in programming mode  
-  startProgramming ();
+  if (!startProgramming ())
+    return;  
   
   SdFile myFile;
 
@@ -1352,7 +1371,8 @@ void writeFlashContents ()
     return;  
 
   // ensure back in programming mode  
-  startProgramming ();
+  if (!startProgramming ())
+    return;
 
   // now commit to flash
   readHexFile(name, writeToFlash);
@@ -1377,7 +1397,8 @@ void verifyFlashContents ()
     return;  
 
   // ensure back in programming mode  
-  startProgramming ();
+  if (!startProgramming ())
+    return;
     
   // verify it
   readHexFile(name, verifyFlash);
@@ -1394,7 +1415,8 @@ void eraseFlashContents ()
     }
     
   // ensure back in programming mode  
-  startProgramming ();
+  if (!startProgramming ())
+    return;
     
   Serial.println (F("Erasing chip ..."));
   program (progamEnable, chipErase);   // erase it
@@ -1499,7 +1521,8 @@ void modifyFuses ()
     }  // if cancelled
     
   // ensure back in programming mode  
-  startProgramming ();
+  if (!startProgramming ())
+    return;
     
   // tell them what we are doing
   Serial.print (F("Changing "));
@@ -1525,7 +1548,13 @@ void loop ()
   Serial.println (F("--------- Starting ---------"));  
   Serial.println ();
 
-  startProgramming ();
+  if (!startProgramming ())
+    {
+    Serial.println (F("Halted."));
+    while  (true)
+      {}
+    }  // end of could not enter programming mode
+    
   getSignature ();
   getFuseBytes ();
   
@@ -1572,8 +1601,13 @@ void loop ()
   
   // re-start programming mode if required
   if (allowTargetToRun)
-    startProgramming ();
-  
+    if (!startProgramming ())
+      {
+      Serial.println (F("Halted."));
+      while  (true)
+        {}
+      } // end of could not enter programming mode
+      
   switch (command)
     {
 #if ALLOW_FILE_SAVING      
