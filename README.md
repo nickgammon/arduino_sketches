@@ -15,7 +15,7 @@ Attempting to enter programming mode ...........................................
 Failed to enter programming mode. Double-check wiring!
 ```
 
-(There are 53 dots because the initial message is "Attempting to enter programming mode ...".
+(There are 53 dots because the initial message is "Attempting to enter programming mode ...").
 
 Wiring
 ------
