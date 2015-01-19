@@ -3,6 +3,20 @@ arduino_sketches
 
 Publicly-released sketches for the Arduino microprocessor.
 
+Update
+------
+
+As from 19th January 2015, the various sketches below "time out" if they don't enter programming mode after 50 attempts.
+
+The code displays a dot for every attempt, so if it fails you will see something like this:
+
+```
+Attempting to enter programming mode ......................................................
+Failed to enter programming mode. Double-check wiring!
+```
+
+(There are 53 dots because the initial message is "Attempting to enter programming mode ...".
+
 Wiring
 ------
 
