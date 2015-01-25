@@ -1,7 +1,19 @@
 // Atmega chip programmer
 // Author: Nick Gammon
 // Date: 22nd May 2012
-// Version: 1.29
+// Version: 1.30
+
+// IMPORTANT: If you get a compile of verification error, due to the sketch size,
+// make some of these false to reduce compile size (the ones you don't want).
+// The Atmega328 is always included (Both Uno and Lilypad versions).
+
+#define USE_ATMEGA8 true
+#define USE_ATMEGA16U2 true    // Uno USB interface chip
+#define USE_ATMEGA32U4 true    // Leonardo
+#define USE_ATMEGA168 true
+#define USE_ATMEGA1280 true
+#define USE_ATMEGA1284 true
+#define USE_ATMEGA2560 true
 
 // For more information including wiring, see: http://www.gammon.com.au/forum/?id=11635
 
@@ -34,19 +46,10 @@
 // Version 1.27: Made bootloaders conditional, so you can omit some to save space
 // Version 1.28: Changed _BV () macro to bit () macro.
 // Version 1.29: Display message if cannot enter programming mode.
+// Version 1.30: Various tidy-ups 
 
-#define VERSION "1.29"
+#define VERSION "1.30"
 
-// make some of these false to reduce compile size (the ones you don't want)
-// The Atmega328 is always included (Both Uno and Lilypad versions)
-
-#define USE_ATMEGA8 true
-#define USE_ATMEGA16U2 true    // Uno USB interface chip
-#define USE_ATMEGA32U4 true    // Leonardo
-#define USE_ATMEGA168 true
-#define USE_ATMEGA1280 true
-#define USE_ATMEGA1284 true
-#define USE_ATMEGA2560 true
 
 const int ENTER_PROGRAMMING_ATTEMPTS = 50;
 
@@ -477,7 +480,7 @@ void getFuseBytes ()
   showHex (program (readExtendedFuseByte, readExtendedFuseByteArg2), true);
   Serial.print (F("Lock byte = "));
   showHex (program (readLockByte, readLockByteArg2), true);
-  Serial.print ("Clock calibration = ");
+  Serial.print (F("Clock calibration = "));
   showHex (program (readCalibrationByte), true);
   }  // end of getFuseBytes
 
@@ -592,7 +595,7 @@ void writeBootloader ()
 
     // commit final page
     commitPage (oldPage);
-    Serial.println ("Written.");
+    Serial.println (F("Written."));
     }  // end if programming
 
   Serial.println (F("Verifying ..."));
@@ -678,7 +681,7 @@ bool startProgramming ()
     
     if (confirm != programAcknowledge)
       {
-      Serial.print (".");
+      Serial.print (F("."));
       if (timeout++ >= ENTER_PROGRAMMING_ATTEMPTS)
         {
         Serial.println ();
