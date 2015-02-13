@@ -254,7 +254,7 @@ Gnd        Gnd
 
 This sketch uses "bit banged" SPI for programming the target chip, which is why it uses pins D4, D5, D6, D7 instead of the hardware SPI pins.
 
-* Atmega\_Hex\_Uploader\_Fixed\_Filename
+Atmega\_Hex\_Uploader\_Fixed\_Filename
 -------------------
 
 See forum post: http://www.gammon.com.au/forum/?id=11638&reply=5#reply5
