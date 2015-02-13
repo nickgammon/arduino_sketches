@@ -20,9 +20,13 @@ Failed to enter programming mode. Double-check wiring!
 Wiring
 ------
 
-All sketches except for Atmega\_Hex\_Uploader and Atmega\_Self\_Read_Signature:
+For all sketches except for:
 
-Connect hardware SPI pins together as below:
+* Atmega\_Hex\_Uploader
+* Atmega\_Self\_Read_Signature
+* Atmega\_Hex\_Uploader\_Fixed\_Filename
+
+... connect hardware SPI pins together as below:
 
 * MISO to MISO
 * MOSI to MOSI
@@ -248,4 +252,50 @@ D9         Clock of target (if required)
 Gnd        Gnd 
 ```
 
-This sketch uses "bit banged" SPI which is why it uses pins D4, D5, D6, D7 instead of the hardware SPI pins.
+This sketch uses "bit banged" SPI for programming the target chip, which is why it uses pins D4, D5, D6, D7 instead of the hardware SPI pins.
+
+* Atmega\_Hex\_Uploader\_Fixed\_Filename
+-------------------
+
+See forum post: http://www.gammon.com.au/forum/?id=11638&reply=5#reply5
+
+This lets you read from disk and flash a chip, with a "fixed" filename (firmware.hex) and no serial port interface. Instead, three LEDs are used to display status, and flash to show errors.
+
+It requires an external SD card, described in the forum post. You can easily connect one by obtaining a Micro SD "breakout" board for around $US 15.
+
+The SD card uses the hardware SPI pins, and thus the programming of the target chip uses bit-banged SPI, which means that the connections to the board to be programmed differs from the above sketches (apart from Atmega\_Hex\_Uploader, which uses the same wiring).
+
+
+Wiring for the Atmega\_Hex\_Uploader\_Fixed\_Filename sketch:
+
+```
+Arduino    SD Card
+--------------------------------
+SS         CS (chip select) 
+MOSI       DI (data in) 
+MISO       DO (data out) 
+SCK        CLK (clock) 
++5V        5V 
+Gnd        Gnd 
+
+Arduino    Target chip/board
+-------------------------------------
+D6         MISO
+D7         MOSI
+D4         SCK
+D5         Reset
+D9         Clock of target (if required)
++5V        5V 
+Gnd        Gnd 
+
+Arduino    Switch and LEDs
+--------------------------------
+D2         Start-programming switch (normally open, other end to Gnd) 
+A0         Error LED (red) 
+A1         Ready LED (green)
+A2         Working LED (yellow)
+```
+
+This sketch uses "bit banged" SPI for programming the target chip, which is why it uses pins D4, D5, D6, D7 instead of the hardware SPI pins.
+
+See the source code (and above forum post) for details about the meanings of the different numbers of LED flashes.
