@@ -1,7 +1,7 @@
 // Atmega hex file uploader (from SD card)
 // Author: Nick Gammon
 // Date: 22nd May 2012
-// Version: 1.23     // NB update 'Version' variable below!
+// Version: 1.25     // NB update 'Version' variable below!
 
 // Version 1.1: Some code cleanups as suggested on the Arduino forum.
 // Version 1.2: Cleared temporary flash area to 0xFF before doing each page
@@ -31,6 +31,7 @@
 // Version 1.22: Cleaned up _BV() macro to use bit() macro instead for readability
 // Version 1.23: Fixed bug regarding checking if you set the SPIEN bit (wrong value used)
 // Version 1.24: Display message if cannot enter programming mode.
+// Version 1.25: Bug fixes
 
 const bool allowTargetToRun = true;  // if true, programming lines are freed when not programming
 
@@ -78,9 +79,9 @@ const bool allowTargetToRun = true;  // if true, programming lines are freed whe
 
 // #include <memdebug.h>
 
-const char Version [] = "1.24";
+const char Version [] = "1.25";
 
-const int ENTER_PROGRAMMING_ATTEMPTS = 50;
+const unsigned int ENTER_PROGRAMMING_ATTEMPTS = 50;
 
 // bit banged SPI pins
 #ifdef __AVR_ATmega2560__
@@ -367,7 +368,7 @@ int foundSig = -1;
 byte lastAddressMSB = 0;
 // copy of current signature entry for matching processor
 signatureType currentSignature;
-boolean haveSDcard;
+bool haveSDcard;
 
 // execute one programming instruction ... b1 is command, b2, b3, b4 are arguments
 //  processor may return a result on the 4th transfer, this is returned.
@@ -400,7 +401,7 @@ byte readFlash (unsigned long addr)
   } // end of readFlash
   
 // write a byte to the flash memory buffer (ready for committing)
-byte writeFlash (unsigned long addr, const byte data)
+void writeFlash (unsigned long addr, const byte data)
   {
   byte high = (addr & 1) ? 0x08 : 0;  // set if high byte wanted
   addr >>= 1;  // turn into word address
@@ -408,7 +409,7 @@ byte writeFlash (unsigned long addr, const byte data)
   } // end of writeFlash  
       
 // show a byte in hex with leading zero and optional newline
-void showHex (const byte b, const boolean newline = false, const boolean show0x = true)
+void showHex (const byte b, const bool newline = false, const bool show0x = true)
   {
   if (show0x)
     Serial.print (F("0x"));
@@ -421,7 +422,7 @@ void showHex (const byte b, const boolean newline = false, const boolean show0x 
     
 // convert two hex characters into a byte
 //    returns true if error, false if OK
-boolean hexConv (const char * (& pStr), byte & b)
+bool hexConv (const char * (& pStr), byte & b)
   {
 
   if (!isxdigit (pStr [0]) || !isxdigit (pStr [1]))
@@ -477,7 +478,7 @@ void showProgress ()
 void clearPage ()
 {
   unsigned int len = currentSignature.pageSize;
-  for (int i = 0; i < len; i++)
+  for (unsigned int i = 0; i < len; i++)
     writeFlash (i, 0xFF);
 }  // end of clearPage
   
@@ -554,7 +555,7 @@ void verifyData (const unsigned long addr, const byte * pData, const int length)
     
   }  // end of verifyData
   
-boolean gotEndOfFile;
+bool gotEndOfFile;
 unsigned long extendedAddress;
 
 unsigned long lowestAddress;
@@ -588,7 +589,7 @@ Line format:
    
 */
 
-boolean processLine (const char * pLine, const byte action)
+bool processLine (const char * pLine, const byte action)
   {
   if (*pLine++ != ':')
      {
@@ -715,7 +716,7 @@ boolean processLine (const char * pLine, const byte action)
   } // end of processLine
   
 //------------------------------------------------------------------------------
-boolean readHexFile (const char * fName, const byte action)
+bool readHexFile (const char * fName, const byte action)
   {
   const int maxLine = 80;
   char buffer[maxLine];
@@ -880,6 +881,7 @@ bool startProgramming ()
     
   Serial.println ();
   Serial.println (F("Entered programming mode OK."));
+  return true;
   }  // end of startProgramming
 
 void stopProgramming ()
@@ -914,7 +916,7 @@ void getSignature ()
     }  // end for each signature byte
   Serial.println ();
   
-  for (int j = 0; j < NUMITEMS (signatures); j++)
+  for (unsigned int j = 0; j < NUMITEMS (signatures); j++)
     {
     memcpy_P (&currentSignature, &signatures [j], sizeof currentSignature);
     
@@ -978,7 +980,7 @@ void writeFuse (const byte newValue, const byte instruction)
   pollUntilReady (); 
   }  // end of writeFuse
   
-boolean updateFuses (const boolean writeIt)
+bool updateFuses (const bool writeIt)
   {
   unsigned long addr;
   unsigned int  len;
@@ -1165,7 +1167,7 @@ void setup ()
 
 
 
-boolean chooseInputFile ()
+bool chooseInputFile ()
   {
   Serial.println ();  
   Serial.print (F("Choose disk file [ "));
@@ -1216,7 +1218,7 @@ boolean chooseInputFile ()
    return false;   
   }  // end of chooseInputFile
   
-boolean getYesNo ()
+bool getYesNo ()
   {
   char response [5];
   getline (response, sizeof response);
@@ -1283,8 +1285,8 @@ void readFlashContents ()
     }
 
   byte memBuf [16];
-  boolean allFF;
-  int i;
+  bool allFF;
+  unsigned int i;
   char linebuf [50];
   byte sumCheck;
   
@@ -1324,7 +1326,7 @@ void readFlashContents ()
       }  // end if different MSB
       
     sumCheck = 16 + lowByte (address) + highByte (address);
-    sprintf (linebuf, ":10%04X00", address & 0xFFFF);
+    sprintf (linebuf, ":10%04X00", (unsigned int) address & 0xFFFF);
     for (i = 0; i < sizeof memBuf; i++)
       {
       sprintf (&linebuf [(i * 2) + 9] , "%02X",  memBuf [i]);
