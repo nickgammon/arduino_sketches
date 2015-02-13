@@ -1,7 +1,7 @@
 // Atmega hex file uploader (from SD card)
 // Author: Nick Gammon
 // Date: 22nd May 2012
-// Version: 1.23     // NB update 'Version' variable below!
+// Version: 1.25a     // NB update 'Version' variable below!
 
 // Version 1.1: Some code cleanups as suggested on the Arduino forum.
 // Version 1.2: Cleared temporary flash area to 0xFF before doing each page
@@ -31,7 +31,7 @@
 // Version 1.22: Cleaned up _BV() macro to use bit() macro instead for readability
 // Version 1.23: Fixed bug regarding checking if you set the SPIEN bit (wrong value used)
 // Version 1.24: Display message if cannot enter programming mode.
-// Version 1.24a: Removed interactive behaviour
+// Version 1.25a: Removed interactive behaviour
 
 /*
 
@@ -80,16 +80,20 @@ No LEDs on = No power?
 
 const bool allowTargetToRun = true;  // if true, programming lines are freed when not programming
 
+// fixed file name to read from SD card (root directory)
 const char wantedFile [] = "firmware.hex";
 
+// which switch to close to start programming the target chip
 const byte startSwitch = 2;
 
+// the three "status" LEDs
 const int errorLED = A0;
 const int readyLED = A1;
 const int workingLED = A2;
 
 const int noLED = -1;  // must be int! - can be negative
 
+// status "messages"
 typedef enum { 
   MSG_NO_SD_CARD,          // cannot open SD card
   MSG_CANNOT_OPEN_FILE,    // canoot open file 'wantedFile' (above)
@@ -147,11 +151,8 @@ typedef enum {
 
 // for SDFat library see: http://code.google.com/p/beta-lib/downloads/list
 #include <SdFat.h>
-#include <avr/eeprom.h>
 
-// #include <memdebug.h>
-
-const char Version [] = "1.24a";
+const char Version [] = "1.25a";
 
 const unsigned int ENTER_PROGRAMMING_ATTEMPTS = 2;
 
@@ -193,6 +194,17 @@ Connect SD card like this:
 
 Both SD card and target processor will need +5V and Gnd connected.
 
+Connect switch between D2 and Gnd (normally open, momentary action)
+
+Status LEDs:
+ 
+  A0: red (error) LED
+  A1: green (ready) LED
+  A2: yellow (working) LED
+  
+LEDs should have an appropriate resistor in series with each one (eg. 220 ohm).
+Other leg of LED goes to Gnd.
+
 */
 
 // for fast port access
@@ -217,7 +229,6 @@ Both SD card and target processor will need +5V and Gnd connected.
 // control speed of programming
 const byte BB_DELAY_MICROSECONDS = 4;
 
-
 // target board reset goes to here
 const byte RESET = MSPIM_SS;
 
@@ -226,7 +237,6 @@ const uint8_t chipSelect = SS;
 
 const unsigned long NO_PAGE = 0xFFFFFFFF;
 const int MAX_FILENAME = 13;
-const int LAST_FILENAME_LOCATION_IN_EEPROM = 0;
 
 // actions to take
 enum {
@@ -263,7 +273,6 @@ typedef struct {
 
 const unsigned long kb = 1024;
 const byte NO_FUSE = 0xFF;
-
 
 // see Atmega datasheets
 const signatureType signatures [] PROGMEM = 
@@ -326,7 +335,6 @@ const signatureType signatures [] PROGMEM =
   };  // end of signatures
 
 char name[MAX_FILENAME] = { 0 };  // current file name
-
        
 // number of items in an array
 #define NUMITEMS(arg) ((unsigned int) (sizeof (arg) / sizeof (arg [0])))
@@ -375,7 +383,11 @@ enum {
 };
 
 // blink one or two LEDs for "times" times, with a delay of "interval". Wait a second and do it again "repeat" times.
-void blink (const int whichLED1, const int whichLED2, const byte times = 1, const unsigned long repeat = 1, const unsigned long interval = 200)
+void blink (const int whichLED1, 
+            const int whichLED2, 
+            const byte times = 1, 
+            const unsigned long repeat = 1, 
+            const unsigned long interval = 200)
   {
   for (unsigned long i = 0; i < repeat; i++)
     {
@@ -558,7 +570,7 @@ unsigned long pagemask;
 unsigned long oldPage;
 unsigned int progressBarCount;
 
-// show one progress symbol, wrap at 64 characters
+// shows progress, toggles working LED
 void showProgress ()
   {
   digitalWrite (workingLED, ! digitalRead (workingLED));
@@ -668,6 +680,7 @@ Line format:
    
 */
 
+// returns true if error, false if OK
 bool processLine (const char * pLine, const byte action)
   {
   if (*pLine++ != ':')
@@ -787,6 +800,7 @@ bool processLine (const char * pLine, const byte action)
   } // end of processLine
   
 //------------------------------------------------------------------------------
+// returns true if error, false if OK
 bool readHexFile (const char * fName, const byte action)
   {
   const int maxLine = 80;
@@ -877,6 +891,8 @@ bool readHexFile (const char * fName, const byte action)
   return false;
 }  // end of readHexFile
 
+
+// returns true if managed to enter programming mode
 bool startProgramming ()
   {
     
@@ -983,6 +999,7 @@ void writeFuse (const byte newValue, const byte instruction)
   pollUntilReady (); 
   }  // end of writeFuse
   
+// returns true if error, false if OK
 bool updateFuses (const bool writeIt)
   {
   unsigned long addr;
@@ -1069,7 +1086,7 @@ void setup ()
 }  // end of setup
 
 
-
+// returns true if error, false if OK
 bool chooseInputFile ()
   {
   strcpy (name, wantedFile);   // use fixed name
