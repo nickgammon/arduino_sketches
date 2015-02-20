@@ -93,6 +93,10 @@ const byte RESET = 10;  // --> goes to reset on the target board
   const byte SCK = 13;    // SPI clock
 #endif
 
+// stringification for Arduino IDE version
+#define xstr(s) str(s)
+#define str(s) #s
+
 // number of items in an array
 #define NUMITEMS(arg) ((unsigned int) (sizeof (arg) / sizeof (arg [0])))
 
@@ -756,7 +760,7 @@ void setup ()
   Serial.println (F("Atmega chip programmer."));
   Serial.println (F("Written by Nick Gammon."));
   Serial.println (F("Version " VERSION));
-  Serial.println (F("Compiled on " __DATE__ " at " __TIME__));
+  Serial.println (F("Compiled on " __DATE__ " at " __TIME__ " with Arduino IDE " xstr(ARDUINO) "."));
 
   digitalWrite (RESET, HIGH);  // ensure SS stays high for now
   SPI.begin ();
