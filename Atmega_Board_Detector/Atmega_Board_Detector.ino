@@ -61,6 +61,10 @@ const int ENTER_PROGRAMMING_ATTEMPTS = 50;
   const byte SCK = 13;    // SPI clock
 #endif
 
+// stringification for Arduino IDE version
+#define xstr(s) str(s)
+#define str(s) #s
+
 // number of items in an array
 #define NUMITEMS(arg) ((unsigned int) (sizeof (arg) / sizeof (arg [0])))
 
@@ -569,7 +573,7 @@ void setup ()
   Serial.println (F("Written by Nick Gammon."));
   Serial.print   (F("Version "));
   Serial.println (Version);
-  Serial.println (F("Compiled on " __DATE__ " at " __TIME__));
+  Serial.println (F("Compiled on " __DATE__ " at " __TIME__ " with Arduino IDE " xstr(ARDUINO) "."));
 
   pinMode (CLOCKOUT, OUTPUT);
 

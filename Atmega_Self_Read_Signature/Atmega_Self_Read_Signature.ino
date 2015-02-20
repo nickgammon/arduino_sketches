@@ -52,6 +52,10 @@ typedef struct {
    unsigned int baseBootSize;
 } signatureType;
 
+// stringification for Arduino IDE version
+#define xstr(s) str(s)
+#define str(s) #s
+
 const unsigned long kb = 1024;
 
 // see Atmega328 datasheet page 298
@@ -284,6 +288,7 @@ void setup ()
   Serial.println ();
   Serial.println (F("Signature detector."));
   Serial.println (F("Written by Nick Gammon."));
+  Serial.println (F("Compiled on " __DATE__ " at " __TIME__ " with Arduino IDE " xstr(ARDUINO) "."));
   
   getSignature ();
   

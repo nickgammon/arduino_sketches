@@ -1,7 +1,7 @@
 // Atmega hex file uploader (from SD card)
 // Author: Nick Gammon
 // Date: 22nd May 2012
-// Version: 1.25     // NB update 'Version' variable below!
+// Version: 1.26     // NB update 'Version' variable below!
 
 // Version 1.1: Some code cleanups as suggested on the Arduino forum.
 // Version 1.2: Cleared temporary flash area to 0xFF before doing each page
@@ -32,6 +32,7 @@
 // Version 1.23: Fixed bug regarding checking if you set the SPIEN bit (wrong value used)
 // Version 1.24: Display message if cannot enter programming mode.
 // Version 1.25: Bug fixes
+// Vesrion 1.26: Show Arduino IDE version
 
 const bool allowTargetToRun = true;  // if true, programming lines are freed when not programming
 
@@ -79,9 +80,13 @@ const bool allowTargetToRun = true;  // if true, programming lines are freed whe
 
 // #include <memdebug.h>
 
-const char Version [] = "1.25";
+const char Version [] = "1.26";
 
 const unsigned int ENTER_PROGRAMMING_ATTEMPTS = 50;
+
+// stringification for Arduino IDE version
+#define xstr(s) str(s)
+#define str(s) #s
 
 // bit banged SPI pins
 #ifdef __AVR_ATmega2560__
@@ -1122,7 +1127,7 @@ void setup ()
   Serial.println (F("Written by Nick Gammon."));
   Serial.print   (F("Version "));
   Serial.println (Version);
-  Serial.println (F("Compiled on " __DATE__ " at " __TIME__));
+  Serial.println (F("Compiled on " __DATE__ " at " __TIME__ " with Arduino IDE " xstr(ARDUINO) "."));
   
   // set up 8 MHz timer on pin 9
   pinMode (CLOCKOUT, OUTPUT); 
