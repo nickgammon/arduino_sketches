@@ -1,7 +1,7 @@
 // Atmega chip programmer
 // Author: Nick Gammon
 // Date: 22nd May 2012
-// Version: 1.30
+// Version: 1.31
 
 // IMPORTANT: If you get a compile of verification error, due to the sketch size,
 // make some of these false to reduce compile size (the ones you don't want).
@@ -47,8 +47,9 @@
 // Version 1.28: Changed _BV () macro to bit () macro.
 // Version 1.29: Display message if cannot enter programming mode.
 // Version 1.30: Various tidy-ups 
+// Version 1.31: Fixed bug in doing second lot of programming under IDE 1.6.0
 
-#define VERSION "1.30"
+#define VERSION "1.31"
 
 
 const int ENTER_PROGRAMMING_ATTEMPTS = 50;
@@ -690,6 +691,7 @@ bool startProgramming ()
         {
         Serial.println ();
         Serial.println (F("Failed to enter programming mode. Double-check wiring!"));
+        stopProgramming ();
         return false;
         }  // end of too many attempts
       }  // end of not entered programming mode
@@ -763,11 +765,6 @@ void setup ()
   Serial.println (F("Compiled on " __DATE__ " at " __TIME__ " with Arduino IDE " xstr(ARDUINO) "."));
 
   digitalWrite (RESET, HIGH);  // ensure SS stays high for now
-  SPI.begin ();
-
-  // slow down SPI for benefit of slower processors like the Attiny
-  SPI.setClockDivider (SPI_CLOCK_DIV64);
-
   pinMode (CLOCKOUT, OUTPUT);
 
   // set up Timer 1
@@ -788,9 +785,9 @@ void loop ()
     // if we found a signature try to write a bootloader
     if (foundSig != -1)
       writeBootloader ();
+    stopProgramming ();
     }   // end of if entered programming mode OK
     
-  stopProgramming ();
 
   Serial.println (F("Type 'C' when ready to continue with another chip ..."));
   while (toupper (Serial.read ()) != 'C')
