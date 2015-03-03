@@ -32,6 +32,7 @@
 // Version 1.23: Fixed bug regarding checking if you set the SPIEN bit (wrong value used)
 // Version 1.24: Display message if cannot enter programming mode.
 // Version 1.25a: Removed interactive behaviour
+// Version 1.25b: Added support for Atmega1284P as the programming chip
 
 /*
 
@@ -152,7 +153,7 @@ typedef enum {
 // for SDFat library see: http://code.google.com/p/beta-lib/downloads/list
 #include <SdFat.h>
 
-const char Version [] = "1.25a";
+const char Version [] = "1.25b";
 
 const unsigned int ENTER_PROGRAMMING_ATTEMPTS = 2;
 
@@ -163,6 +164,12 @@ const unsigned int ENTER_PROGRAMMING_ATTEMPTS = 2;
   const byte MSPIM_SS  = 5;  // port E bit 3
   const byte BB_MISO   = 6;  // port H bit 3
   const byte BB_MOSI   = 7;  // port H bit 4
+#elif defined(__AVR_ATmega1284P__)
+  // Atmega1284P
+  const byte MSPIM_SCK = 11;  // port D bit 3
+  const byte MSPIM_SS  = 12;  // port D bit 4
+  const byte BB_MISO   = 13;  // port D bit 5
+  const byte BB_MOSI   = 14;  // port D bit 6
 #else
   // Atmega328
   const byte MSPIM_SCK = 4;  // port D bit 4
@@ -216,6 +223,14 @@ Other leg of LED goes to Gnd.
   const byte BB_SCK_BIT = 5;
   const byte BB_MISO_BIT = 3;
   const byte BB_MOSI_BIT = 4;
+#elif defined(__AVR_ATmega1284P__)
+  // Atmega1284P
+  #define BB_MISO_PORT PIND
+  #define BB_MOSI_PORT PORTD
+  #define BB_SCK_PORT PORTD
+  const byte BB_SCK_BIT = 3;
+  const byte BB_MISO_BIT = 5;
+  const byte BB_MOSI_BIT = 6;
 #else
   // Atmega328
   #define BB_MISO_PORT PIND
@@ -1063,7 +1078,8 @@ bool updateFuses (const bool writeIt)
 void setup () 
   {
 
-  pinMode (startSwitch, INPUT_PULLUP);
+  pinMode (startSwitch, INPUT);
+  digitalWrite (startSwitch, HIGH);
   pinMode (errorLED, OUTPUT);
   pinMode (readyLED, OUTPUT);
   pinMode (workingLED, OUTPUT);
