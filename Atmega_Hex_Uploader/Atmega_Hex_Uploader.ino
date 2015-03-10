@@ -1,7 +1,7 @@
 // Atmega hex file uploader (from SD card)
 // Author: Nick Gammon
 // Date: 22nd May 2012
-// Version: 1.26     // NB update 'Version' variable below!
+// Version: 1.27     // NB update 'Version' variable below!
 
 // Version 1.1: Some code cleanups as suggested on the Arduino forum.
 // Version 1.2: Cleared temporary flash area to 0xFF before doing each page
@@ -32,13 +32,17 @@
 // Version 1.23: Fixed bug regarding checking if you set the SPIEN bit (wrong value used)
 // Version 1.24: Display message if cannot enter programming mode.
 // Version 1.25: Bug fixes
-// Vesrion 1.26: Show Arduino IDE version
+// Version 1.26: Show Arduino IDE version
+// Version 1.27: Added support for Arduino Ethernet shield (different Slave Select pin for SD card)
+//                 (Make USE_ETHERNET_SHIELD true below to use this feature)
 
 const bool allowTargetToRun = true;  // if true, programming lines are freed when not programming
 
 #define ALLOW_MODIFY_FUSES true   // make false if this sketch doesn't fit into memory
 #define ALLOW_FILE_SAVING true    // make false if this sketch doesn't fit into memory
 #define SAFETY_CHECKS true        // check for disabling SPIEN, or enabling RSTDISBL
+
+#define USE_ETHERNET_SHIELD false  // Use the Arduino Ethernet Shield for the SD card
 
 /*
 
@@ -80,7 +84,7 @@ const bool allowTargetToRun = true;  // if true, programming lines are freed whe
 
 // #include <memdebug.h>
 
-const char Version [] = "1.26";
+const char Version [] = "1.27";
 
 const unsigned int ENTER_PROGRAMMING_ATTEMPTS = 50;
 
@@ -91,13 +95,21 @@ const unsigned int ENTER_PROGRAMMING_ATTEMPTS = 50;
 // bit banged SPI pins
 #ifdef __AVR_ATmega2560__
   // Atmega2560
-  const byte MSPIM_SCK = 4;  // port G bit 5
+  #ifdef USE_ETHERNET_SHIELD
+    const byte MSPIM_SCK = 3;  // port E bit 5
+  #else
+    const byte MSPIM_SCK = 4;  // port G bit 5
+  #endif
   const byte MSPIM_SS  = 5;  // port E bit 3
   const byte BB_MISO   = 6;  // port H bit 3
   const byte BB_MOSI   = 7;  // port H bit 4
 #else
   // Atmega328
-  const byte MSPIM_SCK = 4;  // port D bit 4
+  #ifdef USE_ETHERNET_SHIELD
+    const byte MSPIM_SCK = 3;  // port D bit 3
+  #else
+    const byte MSPIM_SCK = 4;  // port D bit 4
+  #endif  
   const byte MSPIM_SS  = 5;  // port D bit 5
   const byte BB_MISO   = 6;  // port D bit 6
   const byte BB_MOSI   = 7;  // port D bit 7
@@ -110,7 +122,7 @@ const byte CLOCKOUT = 9;
 
 Connect target processor like this:
 
-  D4: (SCK)   --> SCK as per datasheet
+  D4: (SCK)   --> SCK as per datasheet (If using Ethernet shield, use D3 instead)
   D5: (SS)    --> goes to /RESET on target
   D6: (MISO)  --> MISO as per datasheet
   D7: (MOSI)  --> MOSI as per datasheet
@@ -133,7 +145,11 @@ Both SD card and target processor will need +5V and Gnd connected.
   // Atmega2560
   #define BB_MISO_PORT PINH
   #define BB_MOSI_PORT PORTH
-  #define BB_SCK_PORT PORTG
+  #if USE_ETHERNET_SHIELD  
+    #define BB_SCK_PORT PORTE   // Pin D3
+  #else
+    #define BB_SCK_PORT PORTG   // Pind D4
+  #endif
   const byte BB_SCK_BIT = 5;
   const byte BB_MISO_BIT = 3;
   const byte BB_MOSI_BIT = 4;
@@ -142,7 +158,11 @@ Both SD card and target processor will need +5V and Gnd connected.
   #define BB_MISO_PORT PIND
   #define BB_MOSI_PORT PORTD
   #define BB_SCK_PORT PORTD
-  const byte BB_SCK_BIT = 4;
+  #if USE_ETHERNET_SHIELD  
+    const byte BB_SCK_BIT = 3;  // Pin D3
+  #else
+    const byte BB_SCK_BIT = 4;  // Pind D4
+  #endif
   const byte BB_MISO_BIT = 6;
   const byte BB_MOSI_BIT = 7;
 #endif
@@ -155,7 +175,11 @@ const byte BB_DELAY_MICROSECONDS = 4;
 const byte RESET = MSPIM_SS;
 
 // SD chip select pin
-const uint8_t chipSelect = SS;
+#if USE_ETHERNET_SHIELD  
+  const uint8_t chipSelect = 4;   // Ethernet shield uses D4 as SD select
+#else
+  const uint8_t chipSelect = SS;  // Otherwise normal slave select
+#endif
 
 const unsigned long NO_PAGE = 0xFFFFFFFF;
 const int MAX_FILENAME = 13;
