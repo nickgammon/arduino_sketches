@@ -516,12 +516,6 @@ void writeBootloader ()
   const byte * bootloader = signatures [foundSig].bootloader;
 
 
-  Serial.print (F("Bootloader address = 0x"));
-  Serial.println (addr, HEX);
-  Serial.print (F("Bootloader length = "));
-  Serial.print (len);
-  Serial.println (F(" bytes."));
-
   byte subcommand = 'U';
 
   // Atmega328P or Atmega328
@@ -548,6 +542,14 @@ void writeBootloader ()
     else
       Serial.println (F("Using Uno Optiboot 16 MHz loader."));
      }  // end of being Atmega328P
+
+
+  Serial.print (F("Bootloader address = 0x"));
+  Serial.println (addr, HEX);
+  Serial.print (F("Bootloader length = "));
+  Serial.print (len);
+  Serial.println (F(" bytes."));
+
 
   unsigned long oldPage = addr & pagemask;
 
