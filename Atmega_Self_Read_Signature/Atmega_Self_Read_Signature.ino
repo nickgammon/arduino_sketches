@@ -91,6 +91,10 @@ const signatureType signatures [] =
   { { 0x1E, 0x98, 0x01 }, "ATmega2560",  256 * kb,   1 * kb },
   { { 0x1E, 0x98, 0x02 }, "ATmega2561",  256 * kb,   1 * kb },
   
+  // AT90USB family
+  { { 0x1E, 0x93, 0x82 }, "At90USB82",    8 * kb, 512,  },
+  { { 0x1E, 0x94, 0x82 }, "At90USB162",  16 * kb, 512,  },
+  
   // Atmega32U2 family
   { { 0x1E, 0x93, 0x89 }, "ATmega8U2",    8 * kb,   512 },
   { { 0x1E, 0x94, 0x89 }, "ATmega16U2",  16 * kb,   512 },
@@ -112,10 +116,6 @@ const signatureType signatures [] =
   
   // Atmega8A family
   { { 0x1E, 0x93, 0x07 }, "ATmega8A",    8 * kb,  256 },
-  
-  // AT90USB family
-  { { 0x1E, 0x93, 0x82 }, "At90USB82",    8 * kb, 512,  },
-  { { 0x1E, 0x94, 0x82 }, "At90USB162",  16 * kb, 512,  },
   
   };  // end of signatures
   

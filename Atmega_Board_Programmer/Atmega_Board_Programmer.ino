@@ -278,6 +278,10 @@ signatureType signatures [] =
 
   { { 0x1E, 0x98, 0x02 }, "ATmega2561",  256 * kb,   1 * kb },
 
+  // AT90USB family
+  { { 0x1E, 0x93, 0x82 }, "At90USB82",    8 * kb,   512 },
+  { { 0x1E, 0x94, 0x82 }, "At90USB162",  16 * kb,   512 },
+
   // Atmega32U2 family
   { { 0x1E, 0x93, 0x89 }, "ATmega8U2",    8 * kb,   512 },
   { { 0x1E, 0x94, 0x89 }, "ATmega16U2",  16 * kb,   512,
@@ -365,10 +369,6 @@ signatureType signatures [] =
         0xFD,         // fuse extended byte: brown-out detection at 2.7V
         0x0F,         // lock bits: SPM is not allowed to write to the Boot Loader section.
         true },       // need to do timed writes, not polled ones
-
-  // AT90USB family
-  { { 0x1E, 0x93, 0x82 }, "At90USB82",    8 * kb,   512 },
-  { { 0x1E, 0x94, 0x82 }, "At90USB162",  16 * kb,   512 },
 
   };  // end of signatures
 

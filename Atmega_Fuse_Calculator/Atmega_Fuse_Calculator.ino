@@ -484,13 +484,14 @@ const signatureType signatures [] =
   { { 0x1E, 0x98, 0x01 }, "ATmega2560",  256 * kb,   1 * kb, ATmega164P_fuses, NUMITEMS (ATmega164P_fuses) },  // same as ATmega164P
   { { 0x1E, 0x98, 0x02 }, "ATmega2561",  256 * kb,   1 * kb, ATmega164P_fuses, NUMITEMS (ATmega164P_fuses) },  // same as ATmega164P
   
+  // AT90USB family
+  { { 0x1E, 0x93, 0x82 }, "At90USB82",    8 * kb,   512, ATmega8U2_fuses, NUMITEMS (ATmega8U2_fuses) },  // same as ATmega8U2
+  { { 0x1E, 0x94, 0x82 }, "At90USB162",  16 * kb,   512, ATmega8U2_fuses, NUMITEMS (ATmega8U2_fuses) },  // same as ATmega8U2
+
   // Atmega32U2 family
   { { 0x1E, 0x93, 0x89 }, "ATmega8U2",    8 * kb,   512, ATmega8U2_fuses, NUMITEMS (ATmega8U2_fuses) },
   { { 0x1E, 0x94, 0x89 }, "ATmega16U2",  16 * kb,   512, ATmega8U2_fuses, NUMITEMS (ATmega8U2_fuses) },  // same as ATmega8U2
   { { 0x1E, 0x95, 0x8A }, "ATmega32U2",  32 * kb,   512, ATmega8U2_fuses, NUMITEMS (ATmega8U2_fuses) },  // same as ATmega8U2
-  // AT90USB family
-  { { 0x1E, 0x93, 0x82 }, "At90USB82",    8 * kb,   512, ATmega8U2_fuses, NUMITEMS (ATmega8U2_fuses) },  // same as ATmega8U2
-  { { 0x1E, 0x94, 0x82 }, "At90USB162",  16 * kb,   512, ATmega8U2_fuses, NUMITEMS (ATmega8U2_fuses) },  // same as ATmega8U2
   
   
   // Atmega32U4 family
