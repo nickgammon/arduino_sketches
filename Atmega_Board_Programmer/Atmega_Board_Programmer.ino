@@ -1,7 +1,7 @@
 // Atmega chip programmer
 // Author: Nick Gammon
 // Date: 22nd May 2012
-// Version: 1.31
+// Version: 1.32
 
 // IMPORTANT: If you get a compile of verification error, due to the sketch size,
 // make some of these false to reduce compile size (the ones you don't want).
@@ -48,8 +48,9 @@
 // Version 1.29: Display message if cannot enter programming mode.
 // Version 1.30: Various tidy-ups 
 // Version 1.31: Fixed bug in doing second lot of programming under IDE 1.6.0
+// Version 1.32: Bug fixes, added support for At90USB82, At90USB162 signatures
 
-#define VERSION "1.31"
+#define VERSION "1.32"
 
 
 const int ENTER_PROGRAMMING_ATTEMPTS = 50;
@@ -364,6 +365,10 @@ signatureType signatures [] =
         0xFD,         // fuse extended byte: brown-out detection at 2.7V
         0x0F,         // lock bits: SPM is not allowed to write to the Boot Loader section.
         true },       // need to do timed writes, not polled ones
+
+  // AT90USB family
+  { { 0x1E, 0x93, 0x82 }, "At90USB82",    8 * kb,   512 },
+  { { 0x1E, 0x94, 0x82 }, "At90USB162",  16 * kb,   512 },
 
   };  // end of signatures
 

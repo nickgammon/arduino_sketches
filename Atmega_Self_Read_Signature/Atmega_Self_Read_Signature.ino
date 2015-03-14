@@ -111,7 +111,11 @@ const signatureType signatures [] =
   { { 0x1E, 0x90, 0x07 }, "ATtiny13A",   1 * kb,   0 },
   
   // Atmega8A family
-  { { 0x1E, 0x93, 0x07 }, "ATmega8A",    8 * kb, 256 },
+  { { 0x1E, 0x93, 0x07 }, "ATmega8A",    8 * kb,  256 },
+  
+  // AT90USB family
+  { { 0x1E, 0x93, 0x82 }, "At90USB82",    8 * kb, 512,  },
+  { { 0x1E, 0x94, 0x82 }, "At90USB162",  16 * kb, 512,  },
   
   };  // end of signatures
   

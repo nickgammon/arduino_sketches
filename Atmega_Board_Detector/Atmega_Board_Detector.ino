@@ -1,7 +1,7 @@
 // Atmega chip fuse detector
 // Author: Nick Gammon
 // Date: 22nd May 2012
-// Version: 1.12
+// Version: 1.13
 
 // Version 1.1 added signatures for Attiny24/44/84 (5 May 2012)
 // Version 1.2 added signatures for ATmeag8U2/16U2/32U2 (7 May 2012)
@@ -15,8 +15,9 @@
 // Version 1.10: Added database of known signatures
 // Version 1.11: Added MD5 sum for Uno Atmega16U2 (USB) bootloader
 // Version 1.12: Display message if cannot enter programming mode.
+// Version 1.13: Added support for At90USB82, At90USB162
 
-const char Version [] = "1.12";
+const char Version [] = "1.13";
 
 /*
 
@@ -165,6 +166,10 @@ const signatureType signatures [] PROGMEM =
 
    // Atmega8A family
   { { 0x1E, 0x93, 0x07 }, "ATmega8A",      8 * kb,      256,    64,  highFuse, true },
+
+  // AT90USB family
+  { { 0x1E, 0x93, 0x82 }, "At90USB82",    8 * kb,       512,   128,  highFuse },
+  { { 0x1E, 0x94, 0x82 }, "At90USB162",  16 * kb,       512,   128,  highFuse },
 
   };  // end of signatures
 

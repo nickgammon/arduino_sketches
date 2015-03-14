@@ -1,7 +1,7 @@
 // Atmega hex file uploader (from SD card)
 // Author: Nick Gammon
 // Date: 22nd May 2012
-// Version: 1.25a     // NB update 'Version' variable below!
+// Version: 1.25c     // NB update 'Version' variable below!
 
 // Version 1.1: Some code cleanups as suggested on the Arduino forum.
 // Version 1.2: Cleared temporary flash area to 0xFF before doing each page
@@ -33,6 +33,7 @@
 // Version 1.24: Display message if cannot enter programming mode.
 // Version 1.25a: Removed interactive behaviour
 // Version 1.25b: Added support for Atmega1284P as the programming chip
+// Version 1.25c: Added support for At90USB82, At90USB162
 
 /*
 
@@ -153,7 +154,7 @@ typedef enum {
 // for SDFat library see: http://code.google.com/p/beta-lib/downloads/list
 #include <SdFat.h>
 
-const char Version [] = "1.25b";
+const char Version [] = "1.25c";
 
 const unsigned int ENTER_PROGRAMMING_ATTEMPTS = 2;
 
@@ -346,6 +347,10 @@ const signatureType signatures [] PROGMEM =
  
    // Atmega8A family
   { { 0x1E, 0x93, 0x07 }, "ATmega8A",      8 * kb,      256,    64,  highFuse, true },
+
+  // AT90USB family
+  { { 0x1E, 0x93, 0x82 }, "At90USB82",    8 * kb,       512,   128,  highFuse },
+  { { 0x1E, 0x94, 0x82 }, "At90USB162",  16 * kb,       512,   128,  highFuse },
 
   };  // end of signatures
 

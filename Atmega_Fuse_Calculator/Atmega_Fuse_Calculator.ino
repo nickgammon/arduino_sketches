@@ -1,7 +1,7 @@
 // Atmega chip fuse caculator
 // Author: Nick Gammon
 // Date: 22nd May 2012
-// Version: 1.9
+// Version: 1.10
 
 // Version 1.1: Output an 8 MHz clock on pin 9
 // Version 1.2: Corrected flash size for Atmega1284P.
@@ -13,8 +13,9 @@
 // Version 1.7: Fixed compiling problems under IDE 1.5.8
 // Version 1.8: Cleaned up _BV () macro to use bit () macro instead for readability
 // Version 1.9: Display message if cannot enter programming mode.
+// Version 1.10: Added support for At90USB82, At90USB162
 
-#define VERSION "1.9"
+#define VERSION "1.10"
 
 /*
 
@@ -487,6 +488,10 @@ const signatureType signatures [] =
   { { 0x1E, 0x93, 0x89 }, "ATmega8U2",    8 * kb,   512, ATmega8U2_fuses, NUMITEMS (ATmega8U2_fuses) },
   { { 0x1E, 0x94, 0x89 }, "ATmega16U2",  16 * kb,   512, ATmega8U2_fuses, NUMITEMS (ATmega8U2_fuses) },  // same as ATmega8U2
   { { 0x1E, 0x95, 0x8A }, "ATmega32U2",  32 * kb,   512, ATmega8U2_fuses, NUMITEMS (ATmega8U2_fuses) },  // same as ATmega8U2
+  // AT90USB family
+  { { 0x1E, 0x93, 0x82 }, "At90USB82",    8 * kb,   512, ATmega8U2_fuses, NUMITEMS (ATmega8U2_fuses) },  // same as ATmega8U2
+  { { 0x1E, 0x94, 0x82 }, "At90USB162",  16 * kb,   512, ATmega8U2_fuses, NUMITEMS (ATmega8U2_fuses) },  // same as ATmega8U2
+  
   
   // Atmega32U4 family
   { { 0x1E, 0x94, 0x88 }, "ATmega16U4",  16 * kb,   512, ATmega32U4_fuses, NUMITEMS (ATmega32U4_fuses) },

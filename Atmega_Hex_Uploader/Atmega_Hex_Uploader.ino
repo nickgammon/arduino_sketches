@@ -1,7 +1,7 @@
 // Atmega hex file uploader (from SD card)
 // Author: Nick Gammon
 // Date: 22nd May 2012
-// Version: 1.27     // NB update 'Version' variable below!
+// Version: 1.28     // NB update 'Version' variable below!
 
 // Version 1.1: Some code cleanups as suggested on the Arduino forum.
 // Version 1.2: Cleared temporary flash area to 0xFF before doing each page
@@ -35,6 +35,7 @@
 // Version 1.26: Show Arduino IDE version
 // Version 1.27: Added support for Arduino Ethernet shield (different Slave Select pin for SD card)
 //                 (Make USE_ETHERNET_SHIELD true below to use this feature)
+// Version 1.28: Added support for At90USB82, At90USB162
 
 const bool allowTargetToRun = true;  // if true, programming lines are freed when not programming
 
@@ -84,7 +85,7 @@ const bool allowTargetToRun = true;  // if true, programming lines are freed whe
 
 // #include <memdebug.h>
 
-const char Version [] = "1.27";
+const char Version [] = "1.28";
 
 const unsigned int ENTER_PROGRAMMING_ATTEMPTS = 50;
 
@@ -279,6 +280,10 @@ const signatureType signatures [] PROGMEM =
  
    // Atmega8A family
   { { 0x1E, 0x93, 0x07 }, "ATmega8A",      8 * kb,      256,    64,  highFuse, true },
+
+  // AT90USB family
+  { { 0x1E, 0x93, 0x82 }, "At90USB82",    8 * kb,       512,   128,  highFuse },
+  { { 0x1E, 0x94, 0x82 }, "At90USB162",  16 * kb,       512,   128,  highFuse },
 
   };  // end of signatures
 
