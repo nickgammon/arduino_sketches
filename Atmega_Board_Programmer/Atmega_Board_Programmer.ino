@@ -298,7 +298,7 @@ signatureType signatures [] =
         0xF4,         // fuse extended byte: brown-out detection at 2.6V
         0xCF },       // lock bits
 
-  { { 0x1E, 0x95, 0x8A }, "ATmega32U2",  32 * kb,   512,},
+  { { 0x1E, 0x95, 0x8A }, "ATmega32U2",  32 * kb,   512 },
 
   // Atmega32U4 family
   { { 0x1E, 0x94, 0x88 }, "ATmega16U4",  16 * kb,   512 },
