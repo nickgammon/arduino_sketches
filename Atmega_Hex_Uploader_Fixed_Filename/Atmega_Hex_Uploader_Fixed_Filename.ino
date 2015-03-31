@@ -151,7 +151,8 @@ typedef enum {
 
 */
 
-// for SDFat library see: http://code.google.com/p/beta-lib/downloads/list
+// for SDFat library see: https://github.com/greiman/SdFat
+
 #include <SdFat.h>
 
 const char Version [] = "1.25c";

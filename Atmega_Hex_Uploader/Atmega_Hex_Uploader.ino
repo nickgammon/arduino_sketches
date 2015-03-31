@@ -1,7 +1,7 @@
 // Atmega hex file uploader (from SD card)
 // Author: Nick Gammon
 // Date: 22nd May 2012
-// Version: 1.28     // NB update 'Version' variable below!
+// Version: 1.29     // NB update 'Version' variable below!
 
 // Version 1.1: Some code cleanups as suggested on the Arduino forum.
 // Version 1.2: Cleared temporary flash area to 0xFF before doing each page
@@ -36,6 +36,7 @@
 // Version 1.27: Added support for Arduino Ethernet shield (different Slave Select pin for SD card)
 //                 (Make USE_ETHERNET_SHIELD true below to use this feature)
 // Version 1.28: Added support for At90USB82, At90USB162
+// Version 1.29: Added support for Atmega1284P as the programming chip
 
 const bool allowTargetToRun = true;  // if true, programming lines are freed when not programming
 
@@ -78,14 +79,15 @@ const bool allowTargetToRun = true;  // if true, programming lines are freed whe
 
 */
 
-// for SDFat library see: http://code.google.com/p/beta-lib/downloads/list
+// for SDFat library see: https://github.com/greiman/SdFat
+
 #include <SdFat.h>
 
 #include <avr/eeprom.h>
 
 // #include <memdebug.h>
 
-const char Version [] = "1.28";
+const char Version [] = "1.29";
 
 const unsigned int ENTER_PROGRAMMING_ATTEMPTS = 50;
 
@@ -104,6 +106,12 @@ const unsigned int ENTER_PROGRAMMING_ATTEMPTS = 50;
   const byte MSPIM_SS  = 5;  // port E bit 3
   const byte BB_MISO   = 6;  // port H bit 3
   const byte BB_MOSI   = 7;  // port H bit 4
+#elif defined(__AVR_ATmega1284P__)
+  // Atmega1284P
+  const byte MSPIM_SCK = 11;  // port D bit 3
+  const byte MSPIM_SS  = 12;  // port D bit 4
+  const byte BB_MISO   = 13;  // port D bit 5
+  const byte BB_MOSI   = 14;  // port D bit 6
 #else
   // Atmega328
   #ifdef USE_ETHERNET_SHIELD
@@ -154,6 +162,14 @@ Both SD card and target processor will need +5V and Gnd connected.
   const byte BB_SCK_BIT = 5;
   const byte BB_MISO_BIT = 3;
   const byte BB_MOSI_BIT = 4;
+#elif defined(__AVR_ATmega1284P__)
+  // Atmega1284P
+  #define BB_MISO_PORT PIND
+  #define BB_MOSI_PORT PORTD
+  #define BB_SCK_PORT PORTD
+  const byte BB_SCK_BIT = 3;
+  const byte BB_MISO_BIT = 5;
+  const byte BB_MOSI_BIT = 6;
 #else
   // Atmega328
   #define BB_MISO_PORT PIND
