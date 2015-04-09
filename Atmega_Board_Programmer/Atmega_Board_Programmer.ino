@@ -89,7 +89,11 @@ const int ENTER_PROGRAMMING_ATTEMPTS = 50;
 const unsigned long BAUD_RATE = 115200;
 
 const byte CLOCKOUT = 9;
+#ifdef ARDUINO_PINOCCIO
+const byte RESET = SS;  // --> goes to reset on the target board
+#else
 const byte RESET = 10;  // --> goes to reset on the target board
+#endif
 
 #if ARDUINO < 100
   const byte SCK = 13;    // SPI clock
