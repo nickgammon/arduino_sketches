@@ -14,6 +14,7 @@
 #define USE_ATMEGA1280 true
 #define USE_ATMEGA1284 true
 #define USE_ATMEGA2560 true
+#define USE_ATMEGA256RFR2 false // Pinoccio Scout
 
 // For more information including wiring, see: http://www.gammon.com.au/forum/?id=11635
 
@@ -164,6 +165,9 @@ const unsigned long kb = 1024;
 #if USE_ATMEGA2560
   #include "bootloader_atmega2560_v2.h"
 #endif
+#if USE_ATMEGA256RFR2
+  #include "bootloader_atmega256rfr2_v1.0a.h"
+#endif
 #if USE_ATMEGA1284
   #include "bootloader_atmega1284.h"
 #endif
@@ -285,7 +289,23 @@ signatureType signatures [] =
   // rfr2 family
   { { 0x1E, 0xA6, 0x02 }, "ATmega64rfr2",  256 * kb, 1 * kb },
   { { 0x1E, 0xA7, 0x02 }, "ATmega128rfr2", 256 * kb, 1 * kb },
-  { { 0x1E, 0xA8, 0x02 }, "ATmega256rfr2", 256 * kb, 1 * kb },
+  { { 0x1E, 0xA8, 0x02 }, "ATmega256rfr2", 256 * kb, 1 * kb,
+  #if USE_ATMEGA256RFR2
+        atmega256rfr2_bootloader_hex,// loader image
+  #else
+        0,
+  #endif
+        0x3E000,      // start address
+  #if USE_ATMEGA256RFR2
+        sizeof atmega256rfr2_bootloader_hex,
+  #else
+        0,
+  #endif
+        256,          // page size in bytes (for committing)
+        0xDE,         // fuse low byte: internal transceiver clock, max start-up time
+        0xD0,         // fuse high byte: SPI enable, EE save, boot into bootloader, 8192 byte bootloader
+        0xFE,         // fuse extended byte: brown-out detection at 1.8V
+        0x2F },       // lock bits: SPM is not allowed to write to the Boot Loader section.
 
   // AT90USB family
   { { 0x1E, 0x93, 0x82 }, "At90USB82",    8 * kb,   512 },
