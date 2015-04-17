@@ -529,7 +529,10 @@ void writeBootloader ()
 
   if (signatures [foundSig].bootloader == 0)
     {
-    Serial.println (F("No bootloader support for this device."));
+    if (signatures [foundSig].loaderStart != 0)
+      Serial.println (F("Bootloader for this device is disabled, edit " __FILE__ " to enable it."));
+    else
+      Serial.println (F("No bootloader support for this device."));
     return;
     }  // end if
 
