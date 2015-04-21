@@ -1,9 +1,9 @@
 // Atmega chip programmer
 // Author: Nick Gammon
 // Date: 22nd May 2012
-// Version: 1.32
+// Version: 1.33
 
-// IMPORTANT: If you get a compile of verification error, due to the sketch size,
+// IMPORTANT: If you get a compile or verification error, due to the sketch size,
 // make some of these false to reduce compile size (the ones you don't want).
 // The Atmega328 is always included (Both Uno and Lilypad versions).
 
@@ -50,8 +50,9 @@
 // Version 1.30: Various tidy-ups 
 // Version 1.31: Fixed bug in doing second lot of programming under IDE 1.6.0
 // Version 1.32: Bug fixes, added support for At90USB82, At90USB162 signatures
+// Version 1.33: Added support for ATMEGA256RFR2 (Pinoccio Scout)
 
-#define VERSION "1.32"
+#define VERSION "1.33"
 
 
 const int ENTER_PROGRAMMING_ATTEMPTS = 50;
@@ -91,9 +92,9 @@ const unsigned long BAUD_RATE = 115200;
 
 const byte CLOCKOUT = 9;
 #ifdef ARDUINO_PINOCCIO
-const byte RESET = SS;  // --> goes to reset on the target board
+  const byte RESET = SS;  // --> goes to reset on the target board
 #else
-const byte RESET = 10;  // --> goes to reset on the target board
+  const byte RESET = 10;  // --> goes to reset on the target board
 #endif
 
 #if ARDUINO < 100
