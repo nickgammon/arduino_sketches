@@ -1,9 +1,9 @@
 // Atmega chip programmer
 // Author: Nick Gammon
 // Date: 22nd May 2012
-// Version: 1.32
+// Version: 1.33
 
-// IMPORTANT: If you get a compile of verification error, due to the sketch size,
+// IMPORTANT: If you get a compile or verification error, due to the sketch size,
 // make some of these false to reduce compile size (the ones you don't want).
 // The Atmega328 is always included (Both Uno and Lilypad versions).
 
@@ -14,6 +14,7 @@
 #define USE_ATMEGA1280 true
 #define USE_ATMEGA1284 true
 #define USE_ATMEGA2560 true
+#define USE_ATMEGA256RFR2 false // Pinoccio Scout
 
 // For more information including wiring, see: http://www.gammon.com.au/forum/?id=11635
 
@@ -49,8 +50,9 @@
 // Version 1.30: Various tidy-ups 
 // Version 1.31: Fixed bug in doing second lot of programming under IDE 1.6.0
 // Version 1.32: Bug fixes, added support for At90USB82, At90USB162 signatures
+// Version 1.33: Added support for ATMEGA256RFR2 (Pinoccio Scout)
 
-#define VERSION "1.32"
+#define VERSION "1.33"
 
 
 const int ENTER_PROGRAMMING_ATTEMPTS = 50;
@@ -89,7 +91,11 @@ const int ENTER_PROGRAMMING_ATTEMPTS = 50;
 const unsigned long BAUD_RATE = 115200;
 
 const byte CLOCKOUT = 9;
-const byte RESET = 10;  // --> goes to reset on the target board
+#ifdef ARDUINO_PINOCCIO
+  const byte RESET = SS;  // --> goes to reset on the target board
+#else
+  const byte RESET = 10;  // --> goes to reset on the target board
+#endif
 
 #if ARDUINO < 100
   const byte SCK = 13;    // SPI clock
@@ -159,6 +165,9 @@ const unsigned long kb = 1024;
 #endif
 #if USE_ATMEGA2560
   #include "bootloader_atmega2560_v2.h"
+#endif
+#if USE_ATMEGA256RFR2
+  #include "bootloader_atmega256rfr2_v1.0a.h"
 #endif
 #if USE_ATMEGA1284
   #include "bootloader_atmega1284.h"
@@ -277,6 +286,27 @@ signatureType signatures [] =
         0x2F },       // lock bits: SPM is not allowed to write to the Boot Loader section.
 
   { { 0x1E, 0x98, 0x02 }, "ATmega2561",  256 * kb,   1 * kb },
+
+  // rfr2 family
+  { { 0x1E, 0xA6, 0x02 }, "ATmega64rfr2",  256 * kb, 1 * kb },
+  { { 0x1E, 0xA7, 0x02 }, "ATmega128rfr2", 256 * kb, 1 * kb },
+  { { 0x1E, 0xA8, 0x02 }, "ATmega256rfr2", 256 * kb, 1 * kb,
+  #if USE_ATMEGA256RFR2
+        atmega256rfr2_bootloader_hex,// loader image
+  #else
+        0,
+  #endif
+        0x3E000,      // start address
+  #if USE_ATMEGA256RFR2
+        sizeof atmega256rfr2_bootloader_hex,
+  #else
+        0,
+  #endif
+        256,          // page size in bytes (for committing)
+        0xDE,         // fuse low byte: internal transceiver clock, max start-up time
+        0xD0,         // fuse high byte: SPI enable, EE save, boot into bootloader, 8192 byte bootloader
+        0xFE,         // fuse extended byte: brown-out detection at 1.8V
+        0x2F },       // lock bits: SPM is not allowed to write to the Boot Loader section.
 
   // AT90USB family
   { { 0x1E, 0x93, 0x82 }, "At90USB82",    8 * kb,   512 },
@@ -500,7 +530,10 @@ void writeBootloader ()
 
   if (signatures [foundSig].bootloader == 0)
     {
-    Serial.println (F("No bootloader support for this device."));
+    if (signatures [foundSig].loaderStart != 0)
+      Serial.println (F("Bootloader for this device is disabled, edit " __FILE__ " to enable it."));
+    else
+      Serial.println (F("No bootloader support for this device."));
     return;
     }  // end if
 
