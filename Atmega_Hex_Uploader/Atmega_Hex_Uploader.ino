@@ -1,7 +1,7 @@
 // Atmega hex file uploader (from SD card)
 // Author: Nick Gammon
 // Date: 22nd May 2012
-// Version: 1.29     // NB update 'Version' variable below!
+// Version: 1.30     // NB update 'Version' variable below!
 
 // Version 1.1: Some code cleanups as suggested on the Arduino forum.
 // Version 1.2: Cleared temporary flash area to 0xFF before doing each page
@@ -37,6 +37,7 @@
 //                 (Make USE_ETHERNET_SHIELD true below to use this feature)
 // Version 1.28: Added support for At90USB82, At90USB162
 // Version 1.29: Added support for Atmega1284P as the programming chip
+// Version 1.30: Added support for ATmega64rfr2/ATmega128rfr2/ATmega256rfr2 chips
 
 const bool allowTargetToRun = true;  // if true, programming lines are freed when not programming
 
@@ -87,7 +88,7 @@ const bool allowTargetToRun = true;  // if true, programming lines are freed whe
 
 // #include <memdebug.h>
 
-const char Version [] = "1.29";
+const char Version [] = "1.30";
 
 const unsigned int ENTER_PROGRAMMING_ATTEMPTS = 50;
 
@@ -301,6 +302,11 @@ const signatureType signatures [] PROGMEM =
    // Atmega8A family
   { { 0x1E, 0x93, 0x07 }, "ATmega8A",      8 * kb,      256,    64,  highFuse, true },
 
+  // ATmega64rfr2 family
+  { { 0x1E, 0xA6, 0x02 }, "ATmega64rfr2",  256 * kb, 1 * kb,   256, highFuse },
+  { { 0x1E, 0xA7, 0x02 }, "ATmega128rfr2", 256 * kb, 1 * kb,   256, highFuse },
+  { { 0x1E, 0xA8, 0x02 }, "ATmega256rfr2", 256 * kb, 1 * kb,   256, highFuse },
+  
   };  // end of signatures
 
 char name[MAX_FILENAME] = { 0 };  // current file name
