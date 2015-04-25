@@ -1,7 +1,7 @@
 // Atmega hex file uploader (from SD card)
 // Author: Nick Gammon
 // Date: 22nd May 2012
-// Version: 1.30     // NB update 'Version' variable below!
+// Version: 1.31     // NB update 'Version' variable below!
 
 // Version 1.1: Some code cleanups as suggested on the Arduino forum.
 // Version 1.2: Cleared temporary flash area to 0xFF before doing each page
@@ -38,6 +38,7 @@
 // Version 1.28: Added support for At90USB82, At90USB162
 // Version 1.29: Added support for Atmega1284P as the programming chip
 // Version 1.30: Added support for ATmega64rfr2/ATmega128rfr2/ATmega256rfr2 chips
+// Version 1.31: Fixed bug regarding the way that USE_ETHERNET_SHIELD was being handled
 
 const bool allowTargetToRun = true;  // if true, programming lines are freed when not programming
 
@@ -88,7 +89,7 @@ const bool allowTargetToRun = true;  // if true, programming lines are freed whe
 
 // #include <memdebug.h>
 
-const char Version [] = "1.30";
+const char Version [] = "1.31";
 
 const unsigned int ENTER_PROGRAMMING_ATTEMPTS = 50;
 
@@ -99,7 +100,7 @@ const unsigned int ENTER_PROGRAMMING_ATTEMPTS = 50;
 // bit banged SPI pins
 #ifdef __AVR_ATmega2560__
   // Atmega2560
-  #ifdef USE_ETHERNET_SHIELD
+  #if USE_ETHERNET_SHIELD
     const byte MSPIM_SCK = 3;  // port E bit 5
   #else
     const byte MSPIM_SCK = 4;  // port G bit 5
@@ -115,7 +116,7 @@ const unsigned int ENTER_PROGRAMMING_ATTEMPTS = 50;
   const byte BB_MOSI   = 14;  // port D bit 6
 #else
   // Atmega328
-  #ifdef USE_ETHERNET_SHIELD
+  #if USE_ETHERNET_SHIELD
     const byte MSPIM_SCK = 3;  // port D bit 3
   #else
     const byte MSPIM_SCK = 4;  // port D bit 4
