@@ -36,13 +36,15 @@
 // Version 1.25c: Added support for At90USB82, At90USB162
 // Version 1.25d: Added support for ATmega64rfr2/ATmega128rfr2/ATmega256rfr2 chips
 // Version 1.25e: Added support for Crossroads' standalone programming board with 2 x 7-segment LEDs
+// Version 1.25f: Added support for Crossroads' standalone programming board with 1 x 7-segment LEDs
 
 /*
 
 LED codes (flash counts) - each sequence repeats 5 times
 
 If you are using the Crossroads programming board, the statuses are also shown
-as a 2-digit code in the 7-segment display.
+as a 2-digit code in the 7-segment display. If you have the board with only one
+7-segment display you will see the first letter only.
 
 Problems with SD card or programming target chip
 ------------------------------------------------
@@ -54,7 +56,7 @@ Red x 4 = This chip does not have a bootloader fuse (Fu)
 Red x 5 = Cannot read chip signature (Sg)
 Red x 6 = Unrecognized signature (Un)
 Red x 7 = Bad start address in hex file for code (Ad)
-Red x 8 = Verification error (uF)
+Red x 8 = Verification error (bd)
 
 Problems with firmware.hex file
 -------------------------------
@@ -86,7 +88,8 @@ No LEDs on = No power?
 
 
 // make true if using the Board from Crossroads which has an LED readout and rotary encoder
-#define CROSSROADS_PROGRAMMING_BOARD false
+#define CROSSROADS_PROGRAMMING_BOARD true
+#define NO_ENCODER true
 
 const bool allowTargetToRun = true;  // if true, programming lines are freed when not programming
 
@@ -164,7 +167,7 @@ typedef enum {
 #include <SdFat.h>
 #include <EEPROM.h>
 
-const char Version [] = "1.25e";
+const char Version [] = "1.25f";
 
 const unsigned int ENTER_PROGRAMMING_ATTEMPTS = 2;
 
@@ -441,6 +444,8 @@ enum {
 
 #if CROSSROADS_PROGRAMMING_BOARD
 
+#if !NO_ENCODER
+
 volatile boolean fired = false;
 
  // handle pin change interrupt for D8 to D13 here
@@ -501,7 +506,9 @@ static unsigned long lastFiredTime;
   pinB = newPinB;
     
  }  // end of PCINT2_vect
- 
+
+#endif // NO_ENCODER
+
 void showCharacter (const byte which)
 {
   byte converted = 0b0000001;    // hyphen as default
@@ -583,7 +590,7 @@ void ShowMessage (const byte which)
       case MSG_CANNOT_FIND_SIGNATURE:           show7SegmentMessage ("Sg"); break;
       case MSG_UNRECOGNIZED_SIGNATURE:          show7SegmentMessage ("Un"); break;
       case MSG_BAD_START_ADDRESS:               show7SegmentMessage ("Ad"); break;
-      case MSG_VERIFICATION_ERROR:              show7SegmentMessage ("uF"); break;
+      case MSG_VERIFICATION_ERROR:              show7SegmentMessage ("bd"); break;
       case MSG_FLASHED_OK:                      show7SegmentMessage ("AA"); break;
       
      default:                                   show7SegmentMessage ("--"); break;   // unknown error
@@ -1245,29 +1252,24 @@ void setup ()
   pinMode (readyLED, OUTPUT);
   pinMode (workingLED, OUTPUT);
   
-
-  // initialize the SD card at SPI_HALF_SPEED to avoid bus errors with
-  // breadboards.  use SPI_FULL_SPEED for better performance.
-  while (!sd.begin (chipSelect, SPI_HALF_SPEED)) 
-    {
-    ShowMessage (MSG_NO_SD_CARD);
-    delay (1000);
-    }
-  
 #if CROSSROADS_PROGRAMMING_BOARD
 
   pinMode (selectSwitch, INPUT);
   digitalWrite (selectSwitch, HIGH);
 
+#if !NO_ENCODER
   // pin change interrupt (example for D9)
   PCMSK0 = bit (PCINT0) | bit (PCINT1);  // want pin 8 and 9
   PCIFR  = bit (PCIF0);   // clear any outstanding interrupts
   PCICR  = bit (PCIE0);   // enable pin change interrupts for D0 to D7
-  
+#endif // NO_ENCODER
+
   // for the 7-segment display
   pinMode (sevenSegmentSelect, OUTPUT);
   pinMode (sevenSegmentClock,  OUTPUT);
   pinMode (sevenSegmentSerial, OUTPUT);
+
+  show7SegmentMessage ("--");
 
   // get old file number
   byte i = EEPROM.read (0);
@@ -1288,6 +1290,16 @@ void setup ()
   TCCR1B = bit (WGM12) | bit (CS10);   // CTC, no prescaling
   OCR1A =  0;       // output every cycle
 #endif //  CROSSROADS_PROGRAMMING_BOARD
+
+  // initialize the SD card at SPI_HALF_SPEED to avoid bus errors with
+  // breadboards.  use SPI_FULL_SPEED for better performance.
+  while (!sd.begin (chipSelect, SPI_HALF_SPEED)) 
+    {
+    ShowMessage (MSG_NO_SD_CARD);
+    delay (1000);
+    }
+  
+
 
 }  // end of setup
 
@@ -1368,13 +1380,18 @@ void loop ()
   while (digitalRead (startSwitch) == HIGH)
     {
 #if CROSSROADS_PROGRAMMING_BOARD
+
+#if !NO_ENCODER
+
     if (fired)
       {
       // debugging display perhaps?
           
       fired = false;
       }  // end if fired
-      
+
+#endif // NO_ENCODER
+
     static byte oldSelectSwitch = HIGH;
     
     // go up 10 files
@@ -1393,7 +1410,11 @@ void loop ()
     
     show7SegmentMessage (buf);
     
+#if NO_ENCODER    
+    snprintf (name, sizeof (name), "CODE%02i.HEX", (int) fileNumber / 10);
+#else
     snprintf (name, sizeof (name), "CODE%02i.HEX", (int) fileNumber);
+#endif
   
 #else
     strcpy (name, wantedFile);   // use fixed name
