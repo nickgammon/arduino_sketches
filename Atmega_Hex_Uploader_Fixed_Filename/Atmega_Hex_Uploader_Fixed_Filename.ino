@@ -88,7 +88,7 @@ No LEDs on = No power?
 
 
 // make true if using the Board from Crossroads which has an LED readout and rotary encoder
-#define CROSSROADS_PROGRAMMING_BOARD true
+#define CROSSROADS_PROGRAMMING_BOARD false
 #define NO_ENCODER true
 
 const bool allowTargetToRun = true;  // if true, programming lines are freed when not programming
