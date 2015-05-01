@@ -35,51 +35,58 @@
 // Version 1.25b: Added support for Atmega1284P as the programming chip
 // Version 1.25c: Added support for At90USB82, At90USB162
 // Version 1.25d: Added support for ATmega64rfr2/ATmega128rfr2/ATmega256rfr2 chips
+// Version 1.25e: Added support for Crossroads' standalone programming board with 2 x 7-segment LEDs
 
 /*
 
 LED codes (flash counts) - each sequence repeats 5 times
 
+If you are using the Crossroads programming board, the statuses are also shown
+as a 2-digit code in the 7-segment display.
+
 Problems with SD card or programming target chip
 ------------------------------------------------
 
-Red x 1 = Cannot open SD card
-Red x 2 = Cannot read file 'firmware.hex'
-Red x 3 = Cannot enter programming mode in target chip
-Red x 4 = This chip does not have a bootloader fuse
-Red x 5 = Cannot read chip signature
-Red x 6 = Unrecognized signature
-Red x 7 = Bad start address in hex file for code
-Red x 8 = Verification error
+Red x 1 = Cannot open SD card (Sd)
+Red x 2 = Cannot read file 'firmware.hex' (FL)
+Red x 3 = Cannot enter programming mode in target chip (Ch)
+Red x 4 = This chip does not have a bootloader fuse (Fu)
+Red x 5 = Cannot read chip signature (Sg)
+Red x 6 = Unrecognized signature (Un)
+Red x 7 = Bad start address in hex file for code (Ad)
+Red x 8 = Verification error (uF)
 
 Problems with firmware.hex file
 -------------------------------
 
-Red + yellow x 1 = Line in file is too long
-Red + yellow x 2 = Line in file is too short
-Red + yellow x 3 = Line does not start with a colon (:)
-Red + yellow x 4 = Invalid hex digits (should be 0-9, A-F)
-Red + yellow x 5 = Bad sumcheck at end of line
-Red + yellow x 6 = Line not expected length
-Red + yellow x 7 = Unknown record type
-Red + yellow x 8 = No 'end of file' record in file
-Red + yellow x 9 = File will not fit into flash of target
+Red + yellow x 1 = Line in file is too long (E1)
+Red + yellow x 2 = Line in file is too short (E2)
+Red + yellow x 3 = Line does not start with a colon (:) (E3)
+Red + yellow x 4 = Invalid hex digits (should be 0-9, A-F) (E4)
+Red + yellow x 5 = Bad sumcheck at end of line (E5)
+Red + yellow x 6 = Line not expected length (E6)
+Red + yellow x 7 = Unknown record type (E7)
+Red + yellow x 8 = No 'end of file' record in file (E8)
+Red + yellow x 9 = File will not fit into flash of target (LG)
 
 Worked OK
 ---------
 
-Green x 3 = Flashed and verified OK - sequence repeats 10 times
+Green x 3 = Flashed and verified OK - sequence repeats 10 times (AA)
 
 Other statuses
 --------------
 
 Green (steady) = Ready to program (close switch to commence)
-Yellow (flashing) = Programming
-Green (steady) + yellow (flashing) = verifying
+Yellow (flashing) = Programming (Pr)
+Green (steady) + yellow (flashing) = verifying (uF)
 No LEDs on = No power?
 
 */
 
+
+// make true if using the Board from Crossroads which has an LED readout and rotary encoder
+#define CROSSROADS_PROGRAMMING_BOARD false
 
 const bool allowTargetToRun = true;  // if true, programming lines are freed when not programming
 
@@ -155,8 +162,9 @@ typedef enum {
 // for SDFat library see: https://github.com/greiman/SdFat
 
 #include <SdFat.h>
+#include <EEPROM.h>
 
-const char Version [] = "1.25d";
+const char Version [] = "1.25e";
 
 const unsigned int ENTER_PROGRAMMING_ATTEMPTS = 2;
 
@@ -255,6 +263,28 @@ const uint8_t chipSelect = SS;
 
 const unsigned long NO_PAGE = 0xFFFFFFFF;
 const int MAX_FILENAME = 13;
+
+#if CROSSROADS_PROGRAMMING_BOARD
+
+  // Note: File names will be CODExx.HEX where xx is 00 to 99
+   
+  const unsigned long ROTARY_DEBOUNCE_TIME = 100; // milliseconds
+  
+  const byte Encoder_A_Pin = 8;  // PB0, pin 12 (TQFP) on board
+  const byte Encoder_B_Pin = 9;  // PB1, pin 13 (TQFP) on board
+  
+  const byte selectSwitch = 3;   // to select a file
+  
+  const byte sevenSegmentSelect = 19;
+  const byte sevenSegmentClock  = 18;
+  const byte sevenSegmentSerial = 17;
+  
+  #include "font7segment.h"
+  
+  volatile char fileNumber = 0;
+
+#endif //  CROSSROADS_PROGRAMMING_BOARD
+
 
 // actions to take
 enum {
@@ -409,6 +439,91 @@ enum {
     hexStartLinearAddressRecord // 05
 };
 
+#if CROSSROADS_PROGRAMMING_BOARD
+
+volatile boolean fired = false;
+
+ // handle pin change interrupt for D8 to D13 here
+ISR (PCINT0_vect)
+{
+static byte pinA, pinB;  
+static boolean ready;
+static unsigned long lastFiredTime;
+
+  byte newPinA = digitalRead (Encoder_A_Pin);
+  byte newPinB = digitalRead (Encoder_B_Pin);
+  
+  if (pinA == newPinA && 
+      pinB == newPinB)
+      return;    // spurious interrupt
+
+  // so we only record a turn on both the same (HH or LL)
+  
+  // Forward is: LH/HH or HL/LL
+  // Reverse is: HL/HH or LH/LL
+
+  if (newPinA == newPinB)
+    {
+    if (ready)
+      {
+        
+      if (millis () - lastFiredTime >= ROTARY_DEBOUNCE_TIME)
+        {
+        if (newPinA == HIGH)  // must be HH now
+          {
+          if (pinA == LOW)
+            fileNumber ++;
+          else
+            fileNumber --;
+          }
+        else
+          {                  // must be LL now
+          if (pinA == LOW)  
+            fileNumber --;
+          else
+            fileNumber ++;        
+          }
+        if (fileNumber > 99)
+          fileNumber = 0;
+        else if (fileNumber < 0)
+          fileNumber = 99;
+        lastFiredTime = millis ();
+        fired = true;
+        }
+        
+      ready = false;
+      }  // end of being ready
+    }  // end of completed click
+  else
+    ready = true;
+    
+  pinA = newPinA;
+  pinB = newPinB;
+    
+ }  // end of PCINT2_vect
+ 
+void showCharacter (const byte which)
+{
+  byte converted = 0b0000001;    // hyphen as default
+  // look up bit pattern if possible
+  if (which >= ' ' && which <= 'z')
+    converted = pgm_read_byte (&fontArray [which - ' ']);
+  shiftOut(sevenSegmentSerial, sevenSegmentClock, LSBFIRST, converted << 1);
+  }  // end of showCharacter
+  
+void show7SegmentMessage (char * what)
+{
+  digitalWrite (sevenSegmentSelect, LOW);  
+  if (what [1])
+    showCharacter (what [1]);
+  else
+    showCharacter (' ');
+  showCharacter (what [0]);
+  digitalWrite (sevenSegmentSelect, HIGH);
+}  // end of show7SegmentMessage
+#endif //  CROSSROADS_PROGRAMMING_BOARD
+
+
 // blink one or two LEDs for "times" times, with a delay of "interval". Wait a second and do it again "repeat" times.
 void blink (const int whichLED1, 
             const int whichLED2, 
@@ -441,36 +556,70 @@ void ShowMessage (const byte which)
   digitalWrite (workingLED, LOW);
   digitalWrite (readyLED, LOW);
   
+#if CROSSROADS_PROGRAMMING_BOARD
+  // now show an appropriate code
+  switch (which)
+     {
+      // problems with SD card or finding the file
+      case MSG_NO_SD_CARD:                      show7SegmentMessage ("Sd"); break;
+      case MSG_CANNOT_OPEN_FILE:                show7SegmentMessage ("FL"); break;
+      
+      // problems reading the .hex file
+      case MSG_LINE_TOO_LONG:                   show7SegmentMessage ("E1"); break;
+      case MSG_LINE_TOO_SHORT:                  show7SegmentMessage ("E2"); break;
+      case MSG_LINE_DOES_NOT_START_WITH_COLON:  show7SegmentMessage ("E3"); break;
+      case MSG_INVALID_HEX_DIGITS:              show7SegmentMessage ("E4"); break;
+      case MSG_BAD_SUMCHECK:                    show7SegmentMessage ("E5"); break;
+      case MSG_LINE_NOT_EXPECTED_LENGTH:        show7SegmentMessage ("E6"); break;
+      case MSG_UNKNOWN_RECORD_TYPE:             show7SegmentMessage ("E7"); break;
+      case MSG_NO_END_OF_FILE_RECORD:           show7SegmentMessage ("E8"); break;
+      
+      // problems with the file contents
+      case MSG_FILE_TOO_LARGE_FOR_FLASH:        show7SegmentMessage ("LG"); break;
+      
+      // problems programming the chip
+      case MSG_CANNOT_ENTER_PROGRAMMING_MODE:   show7SegmentMessage ("Ch"); break;
+      case MSG_NO_BOOTLOADER_FUSE:              show7SegmentMessage ("Fu"); break;
+      case MSG_CANNOT_FIND_SIGNATURE:           show7SegmentMessage ("Sg"); break;
+      case MSG_UNRECOGNIZED_SIGNATURE:          show7SegmentMessage ("Un"); break;
+      case MSG_BAD_START_ADDRESS:               show7SegmentMessage ("Ad"); break;
+      case MSG_VERIFICATION_ERROR:              show7SegmentMessage ("uF"); break;
+      case MSG_FLASHED_OK:                      show7SegmentMessage ("AA"); break;
+      
+     default:                                   show7SegmentMessage ("--"); break;   // unknown error
+     }  // end of switch on which message 
+#endif //  CROSSROADS_PROGRAMMING_BOARD
+
   // now flash an appropriate sequence
   switch (which)
      {
       // problems with SD card or finding the file
-      case MSG_NO_SD_CARD:          blink (errorLED, noLED, 1, 5); break;
-      case MSG_CANNOT_OPEN_FILE:    blink (errorLED, noLED, 2, 5); break;
+      case MSG_NO_SD_CARD:                      blink (errorLED, noLED, 1, 5); break;
+      case MSG_CANNOT_OPEN_FILE:                blink (errorLED, noLED, 2, 5); break;
       
       // problems reading the .hex file
-      case MSG_LINE_TOO_LONG:       blink (errorLED, workingLED, 1, 5); break;
-      case MSG_LINE_TOO_SHORT:      blink (errorLED, workingLED, 2, 5); break;
+      case MSG_LINE_TOO_LONG:                   blink (errorLED, workingLED, 1, 5); break;
+      case MSG_LINE_TOO_SHORT:                  blink (errorLED, workingLED, 2, 5); break;
       case MSG_LINE_DOES_NOT_START_WITH_COLON:  blink (errorLED, workingLED, 3, 5); break;
-      case MSG_INVALID_HEX_DIGITS:  blink (errorLED, workingLED, 4, 5); break;
-      case MSG_BAD_SUMCHECK:        blink (errorLED, workingLED, 5, 5); break;
-      case MSG_LINE_NOT_EXPECTED_LENGTH:  blink (errorLED, workingLED, 6, 5); break;
-      case MSG_UNKNOWN_RECORD_TYPE:        blink (errorLED, workingLED, 7, 5); break;
-      case MSG_NO_END_OF_FILE_RECORD:      blink (errorLED, workingLED, 8, 5); break;
+      case MSG_INVALID_HEX_DIGITS:              blink (errorLED, workingLED, 4, 5); break;
+      case MSG_BAD_SUMCHECK:                    blink (errorLED, workingLED, 5, 5); break;
+      case MSG_LINE_NOT_EXPECTED_LENGTH:        blink (errorLED, workingLED, 6, 5); break;
+      case MSG_UNKNOWN_RECORD_TYPE:             blink (errorLED, workingLED, 7, 5); break;
+      case MSG_NO_END_OF_FILE_RECORD:           blink (errorLED, workingLED, 8, 5); break;
       
       // problems with the file contents
-      case MSG_FILE_TOO_LARGE_FOR_FLASH:   blink (errorLED, workingLED, 9, 5); break;
+      case MSG_FILE_TOO_LARGE_FOR_FLASH:        blink (errorLED, workingLED, 9, 5); break;
       
       // problems programming the chip
       case MSG_CANNOT_ENTER_PROGRAMMING_MODE:  blink (errorLED, noLED, 3, 5); break;
-      case MSG_NO_BOOTLOADER_FUSE:       blink (errorLED, noLED, 4, 5); break;
-      case MSG_CANNOT_FIND_SIGNATURE:    blink (errorLED, noLED, 5, 5); break;
-      case MSG_UNRECOGNIZED_SIGNATURE:   blink (errorLED, noLED, 6, 5); break;
-      case MSG_BAD_START_ADDRESS:        blink (errorLED, noLED, 7, 5); break;
-      case MSG_VERIFICATION_ERROR:       blink (errorLED, noLED, 8, 5); break;
-      case MSG_FLASHED_OK:               blink (readyLED, noLED, 3, 10); break;
+      case MSG_NO_BOOTLOADER_FUSE:             blink (errorLED, noLED, 4, 5); break;
+      case MSG_CANNOT_FIND_SIGNATURE:          blink (errorLED, noLED, 5, 5); break;
+      case MSG_UNRECOGNIZED_SIGNATURE:         blink (errorLED, noLED, 6, 5); break;
+      case MSG_BAD_START_ADDRESS:              blink (errorLED, noLED, 7, 5); break;
+      case MSG_VERIFICATION_ERROR:             blink (errorLED, noLED, 8, 5); break;
+      case MSG_FLASHED_OK:                     blink (readyLED, noLED, 3, 10); break;
       
-     default: blink (errorLED, 10, 10);  break;   // unknown error
+     default:                                  blink (errorLED, 10, 10);  break;   // unknown error
      }  // end of switch on which message 
   }  // end of ShowMessage
   
@@ -1037,7 +1186,7 @@ bool updateFuses (const bool writeIt)
   // if no fuse, can't change it
   if (fusenumber == NO_FUSE)
     {
-    ShowMessage (MSG_NO_BOOTLOADER_FUSE);
+//    ShowMessage (MSG_NO_BOOTLOADER_FUSE);   // maybe this doesn't matter?
     return false;  // ok return
     }
     
@@ -1096,12 +1245,6 @@ void setup ()
   pinMode (readyLED, OUTPUT);
   pinMode (workingLED, OUTPUT);
   
-  // set up 8 MHz timer on pin 9
-  pinMode (CLOCKOUT, OUTPUT); 
-  // set up Timer 1
-  TCCR1A = bit (COM1A0);  // toggle OC1A on Compare Match
-  TCCR1B = bit (WGM12) | bit (CS10);   // CTC, no prescaling
-  OCR1A =  0;       // output every cycle
 
   // initialize the SD card at SPI_HALF_SPEED to avoid bus errors with
   // breadboards.  use SPI_FULL_SPEED for better performance.
@@ -1111,14 +1254,48 @@ void setup ()
     delay (1000);
     }
   
+#if CROSSROADS_PROGRAMMING_BOARD
+
+  pinMode (selectSwitch, INPUT);
+  digitalWrite (selectSwitch, HIGH);
+
+  // pin change interrupt (example for D9)
+  PCMSK0 = bit (PCINT0) | bit (PCINT1);  // want pin 8 and 9
+  PCIFR  = bit (PCIF0);   // clear any outstanding interrupts
+  PCICR  = bit (PCIE0);   // enable pin change interrupts for D0 to D7
+  
+  // for the 7-segment display
+  pinMode (sevenSegmentSelect, OUTPUT);
+  pinMode (sevenSegmentClock,  OUTPUT);
+  pinMode (sevenSegmentSerial, OUTPUT);
+
+  // get old file number
+  byte i = EEPROM.read (0);
+  if (i != 0xFF)
+    {
+    fileNumber = i;
+    if (fileNumber > 99)
+      fileNumber = 0;
+    else if (fileNumber < 0)
+      fileNumber = 99;
+    }
+    
+#else
+  // set up 8 MHz timer on pin 9
+  pinMode (CLOCKOUT, OUTPUT); 
+  // set up Timer 1
+  TCCR1A = bit (COM1A0);  // toggle OC1A on Compare Match
+  TCCR1B = bit (WGM12) | bit (CS10);   // CTC, no prescaling
+  OCR1A =  0;       // output every cycle
+#endif //  CROSSROADS_PROGRAMMING_BOARD
+
 }  // end of setup
 
 
 // returns true if error, false if OK
 bool chooseInputFile ()
   {
-  strcpy (name, wantedFile);   // use fixed name
-  
+ 
   if (readHexFile(name, checkFile))
     {
     return true;  // error, don't attempt to write
@@ -1149,6 +1326,10 @@ bool writeFlashContents ()
   if (chooseInputFile ())
     return false;  
 
+#if CROSSROADS_PROGRAMMING_BOARD
+  show7SegmentMessage ("Pr");
+#endif //  CROSSROADS_PROGRAMMING_BOARD
+
   // ensure back in programming mode  
   if (!startProgramming ())
     return false;
@@ -1156,6 +1337,10 @@ bool writeFlashContents ()
   // now commit to flash
   if (readHexFile(name, writeToFlash))
     return false;
+
+#if CROSSROADS_PROGRAMMING_BOARD
+  show7SegmentMessage ("uF");
+#endif //  CROSSROADS_PROGRAMMING_BOARD
 
   // turn ready LED on during verification
   digitalWrite (readyLED, HIGH);
@@ -1176,12 +1361,51 @@ bool writeFlashContents ()
 //------------------------------------------------------------------------------
 void loop () 
 {
+
   digitalWrite (readyLED, HIGH);
 
   // wait till they press the start switch
   while (digitalRead (startSwitch) == HIGH)
-    { }
+    {
+#if CROSSROADS_PROGRAMMING_BOARD
+    if (fired)
+      {
+      // debugging display perhaps?
+          
+      fired = false;
+      }  // end if fired
+      
+    static byte oldSelectSwitch = HIGH;
     
+    // go up 10 files
+    if (digitalRead (selectSwitch) == LOW && oldSelectSwitch == HIGH)
+      {
+      fileNumber += 10; 
+      if (fileNumber > 99)
+        fileNumber -= 100;
+      delay (20);  // debounce
+      }  // if switch pressed
+      
+    oldSelectSwitch = digitalRead (selectSwitch);
+
+    char buf [3];
+    snprintf (buf, sizeof (buf), "%02i", (int) fileNumber);
+    
+    show7SegmentMessage (buf);
+    
+    snprintf (name, sizeof (name), "CODE%02i.HEX", (int) fileNumber);
+  
+#else
+    strcpy (name, wantedFile);   // use fixed name
+#endif //  CROSSROADS_PROGRAMMING_BOARD
+    }  // end of waiting for switch press
+    
+#if CROSSROADS_PROGRAMMING_BOARD
+   // remember the file they chose when they hit the switch
+   if (fileNumber != EEPROM.read (0))
+     EEPROM.write (0, (byte) fileNumber);
+#endif // CROSSROADS_PROGRAMMING_BOARD
+
   digitalWrite (readyLED, LOW);
     
   if (!startProgramming ())
@@ -1205,10 +1429,11 @@ void loop ()
   digitalWrite (workingLED, LOW);
   digitalWrite (readyLED, LOW);
   stopProgramming ();
-  delay (1000);
+  delay (500);
   
   if (ok)
     ShowMessage (MSG_FLASHED_OK);
 
 }  // end of loop
+
 
