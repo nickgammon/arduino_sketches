@@ -37,6 +37,7 @@
 // Version 1.25d: Added support for ATmega64rfr2/ATmega128rfr2/ATmega256rfr2 chips
 // Version 1.25e: Added support for Crossroads' standalone programming board with 2 x 7-segment LEDs
 // Version 1.25f: Added support for Crossroads' standalone programming board with 1 x 7-segment LEDs
+// Version 1.25g: Allowed for 256 file names (ie. hex file names)
 
 /*
 
@@ -89,7 +90,10 @@ No LEDs on = No power?
 
 // make true if using the Board from Crossroads which has an LED readout and rotary encoder
 #define CROSSROADS_PROGRAMMING_BOARD false
+// make true if the board does not have a rotary encoder for changing file names
 #define NO_ENCODER true
+// make true if you want hex file names (ie. 00 to FF, rather than 00 to 99)
+#define HEX_FILE_NAMES true
 
 const bool allowTargetToRun = true;  // if true, programming lines are freed when not programming
 
@@ -167,7 +171,7 @@ typedef enum {
 #include <SdFat.h>
 #include <EEPROM.h>
 
-const char Version [] = "1.25f";
+const char Version [] = "1.25g";
 
 const unsigned int ENTER_PROGRAMMING_ATTEMPTS = 2;
 
@@ -284,7 +288,13 @@ const int MAX_FILENAME = 13;
   
   #include "font7segment.h"
   
-  volatile char fileNumber = 0;
+  volatile int fileNumber = 0;
+ 
+  #if HEX_FILE_NAMES
+    const int MAX_FILE_NUMBER = 0xFF;
+  #else
+    const int MAX_FILE_NUMBER = 99;
+  #endif // HEX_FILE_NAMES
 
 #endif //  CROSSROADS_PROGRAMMING_BOARD
 
@@ -488,10 +498,10 @@ static unsigned long lastFiredTime;
           else
             fileNumber ++;        
           }
-        if (fileNumber > 99)
+        if (fileNumber > MAX_FILE_NUMBER)
           fileNumber = 0;
         else if (fileNumber < 0)
-          fileNumber = 99;
+          fileNumber = MAX_FILE_NUMBER;
         lastFiredTime = millis ();
         fired = true;
         }
@@ -1273,14 +1283,11 @@ void setup ()
 
   // get old file number
   byte i = EEPROM.read (0);
-  if (i != 0xFF)
-    {
-    fileNumber = i;
-    if (fileNumber > 99)
-      fileNumber = 0;
-    else if (fileNumber < 0)
-      fileNumber = 99;
-    }
+  fileNumber = i;
+  if (fileNumber > MAX_FILE_NUMBER)
+    fileNumber = 0;
+  else if (fileNumber < 0)
+    fileNumber = MAX_FILE_NUMBER;
     
 #else
   // set up 8 MHz timer on pin 9
@@ -1299,8 +1306,6 @@ void setup ()
     delay (1000);
     }
   
-
-
 }  // end of setup
 
 
@@ -1381,41 +1386,56 @@ void loop ()
     {
 #if CROSSROADS_PROGRAMMING_BOARD
 
-#if !NO_ENCODER
+  #if !NO_ENCODER
 
     if (fired)
       {
       // debugging display perhaps?
           
       fired = false;
+      Serial.println ("tick");
+
       }  // end if fired
 
-#endif // NO_ENCODER
+  #endif // NO_ENCODER
 
     static byte oldSelectSwitch = HIGH;
     
     // go up 10 files
     if (digitalRead (selectSwitch) == LOW && oldSelectSwitch == HIGH)
       {
+  #if HEX_FILE_NAMES
+      fileNumber += 0x10; 
+  #else
       fileNumber += 10; 
-      if (fileNumber > 99)
-        fileNumber -= 100;
+  #endif     
+      if (fileNumber > MAX_FILE_NUMBER)
+        fileNumber -= MAX_FILE_NUMBER + 1;
       delay (20);  // debounce
       }  // if switch pressed
       
     oldSelectSwitch = digitalRead (selectSwitch);
 
     char buf [3];
+   
+  #if HEX_FILE_NAMES
+    snprintf (buf, sizeof (buf), "%02X", (int) fileNumber);
+    #if NO_ENCODER    
+      snprintf (name, sizeof (name), "CODE%02X.HEX", (int) fileNumber / 0x10);
+    #else
+      snprintf (name, sizeof (name), "CODE%02X.HEX", (int) fileNumber);
+    #endif
+  #else
     snprintf (buf, sizeof (buf), "%02i", (int) fileNumber);
-    
+    #if NO_ENCODER    
+      snprintf (name, sizeof (name), "CODE%02i.HEX", (int) fileNumber / 10);
+    #else
+      snprintf (name, sizeof (name), "CODE%02i.HEX", (int) fileNumber);
+    #endif
+  #endif //   #if HEX_FILE_NAMES
+
     show7SegmentMessage (buf);
-    
-#if NO_ENCODER    
-    snprintf (name, sizeof (name), "CODE%02i.HEX", (int) fileNumber / 10);
-#else
-    snprintf (name, sizeof (name), "CODE%02i.HEX", (int) fileNumber);
-#endif
-  
+
 #else
     strcpy (name, wantedFile);   // use fixed name
 #endif //  CROSSROADS_PROGRAMMING_BOARD
