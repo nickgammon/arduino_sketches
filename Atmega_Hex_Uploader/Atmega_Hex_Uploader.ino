@@ -39,6 +39,8 @@
 // Version 1.29: Added support for Atmega1284P as the programming chip
 // Version 1.30: Added support for ATmega64rfr2/ATmega128rfr2/ATmega256rfr2 chips
 // Version 1.31: Fixed bug regarding the way that USE_ETHERNET_SHIELD was being handled
+// Version 1.32: Added preliminary support for high-voltage programming mode for Atmega328 family
+
 
 const bool allowTargetToRun = true;  // if true, programming lines are freed when not programming
 
@@ -47,6 +49,9 @@ const bool allowTargetToRun = true;  // if true, programming lines are freed whe
 #define SAFETY_CHECKS true        // check for disabling SPIEN, or enabling RSTDISBL
 
 #define USE_ETHERNET_SHIELD false  // Use the Arduino Ethernet Shield for the SD card
+
+// make true to use the high-voltage wiring, false for SPI wiring
+#define HIGH_VOLTAGE_PROGRAMMING false
 
 /*
 
@@ -89,7 +94,7 @@ const bool allowTargetToRun = true;  // if true, programming lines are freed whe
 
 // #include <memdebug.h>
 
-const char Version [] = "1.31";
+const char Version [] = "1.32";
 
 const unsigned int ENTER_PROGRAMMING_ATTEMPTS = 50;
 
@@ -97,112 +102,179 @@ const unsigned int ENTER_PROGRAMMING_ATTEMPTS = 50;
 #define xstr(s) str(s)
 #define str(s) #s
 
-// bit banged SPI pins
-#ifdef __AVR_ATmega2560__
-  // Atmega2560
-  #if USE_ETHERNET_SHIELD
-    const byte MSPIM_SCK = 3;  // port E bit 5
+#if HIGH_VOLTAGE_PROGRAMMING
+  // pin assignments for parallel high-voltage programming
+  
+  // ---------------------------------------------
+  //                 Pin on target Atmega328 chip
+  // ---------------------------------------------
+  
+  const byte dataPins [8] = { 
+    6,                        // 14 (PB0) (data bit 0)
+    7,                        // 15 (PB1) (data bit 1)
+    8,                        // 16 (PB2) (data bit 2)
+    9,                        // 17 (PB3) (data bit 3)  
+    10,                       // 18 (PB4) (data bit 4)
+    11,                       // 19 (PB5) (data bit 5)  
+    12,                       // 23 (PC0) (data bit 6)
+    13                        // 24 (PC1) (data bit 7)
+    };    // end of dataPins
+
+  enum {                                        
+      RDY     = A0,           //  3 (PD1) (low means busy)   
+      OE      = A1,           //  4 (PD2) (low means output enabled)    
+      WR      = A2,           //  5 (PD3) (low means write)    
+      BS1     = A3,           //  6 (PD4)     
+      XTAL1   = A4,           //  9 (XTAL1)     
+      XA0     = A5,           // 11 (PD5)     
+      XA1     =  2,           // 12 (PD6)     
+      PAGEL   =  3,           // 13 (PD7)     
+      BS2     =  4,           // 25 (PC2)     
+      VCC     =  5,           // 7 and 20 (VCC and AVCC)
+  };  // end of other pins                  
+                                            
+  
+  /* Note: /RESET (Pin 1) is brought to 12V by connecting a transistor and MOSFET (high-side driver)
+     via a RC network to (the target) VCC. R = 22k, C = 10 nF. This gives a delay of around 40 uS between
+     VCC and /RESET. The transistor turns on the MOSFET, which switches +12V to /RESET.
+     
+     Also connect the grounds. Gnd to pins 8 and 22.
+     Decoupling capacitors: 0.1 uF between VCC/AVCC (pins 7 and 20) and Gnd.
+     Not connected on target: pins 2, 10, 21, 26, 27, 28.
+  */
+  
+  // when XTAL1 is pulsed the settings in XA1 and XA0 control the action
+  enum {
+       ACTION_LOAD_ADDRESS,
+       ACTION_LOAD_DATA,
+       ACTION_LOAD_COMMAND,
+       ACTION_IDLE
+       };    // end of actions
+
+  // high-voltage programming commands we can send (when action is ACTION_LOAD_COMMAND)
+  enum {
+        CMD_CHIP_ERASE       = 0b10000000,
+        CMD_WRITE_FUSE_BITS  = 0b01000000,
+        CMD_WRITE_LOCK_BITS  = 0b00100000,
+        CMD_WRITE_FLASH      = 0b00010000,
+        CMD_WRITE_EEPROM     = 0b00010001,
+        CMD_READ_SIGNATURE   = 0b00001000,
+        CMD_READ_FUSE_BITS   = 0b00000100,
+        CMD_READ_FLASH       = 0b00000010,
+        CMD_READ_EEPROM      = 0b00000011,
+        }; // end of commands
+       
+#else  // (not) HIGH_VOLTAGE_PROGRAMMING
+  
+  // bit banged SPI pins
+  #ifdef __AVR_ATmega2560__
+    // Atmega2560
+    #if USE_ETHERNET_SHIELD
+      const byte MSPIM_SCK = 3;  // port E bit 5
+    #else
+      const byte MSPIM_SCK = 4;  // port G bit 5
+    #endif
+    const byte MSPIM_SS  = 5;  // port E bit 3
+    const byte BB_MISO   = 6;  // port H bit 3
+    const byte BB_MOSI   = 7;  // port H bit 4
+  #elif defined(__AVR_ATmega1284P__)
+    // Atmega1284P
+    const byte MSPIM_SCK = 11;  // port D bit 3
+    const byte MSPIM_SS  = 12;  // port D bit 4
+    const byte BB_MISO   = 13;  // port D bit 5
+    const byte BB_MOSI   = 14;  // port D bit 6
   #else
-    const byte MSPIM_SCK = 4;  // port G bit 5
+    // Atmega328
+    #if USE_ETHERNET_SHIELD
+      const byte MSPIM_SCK = 3;  // port D bit 3
+    #else
+      const byte MSPIM_SCK = 4;  // port D bit 4
+    #endif  
+    const byte MSPIM_SS  = 5;  // port D bit 5
+    const byte BB_MISO   = 6;  // port D bit 6
+    const byte BB_MOSI   = 7;  // port D bit 7
   #endif
-  const byte MSPIM_SS  = 5;  // port E bit 3
-  const byte BB_MISO   = 6;  // port H bit 3
-  const byte BB_MOSI   = 7;  // port H bit 4
-#elif defined(__AVR_ATmega1284P__)
-  // Atmega1284P
-  const byte MSPIM_SCK = 11;  // port D bit 3
-  const byte MSPIM_SS  = 12;  // port D bit 4
-  const byte BB_MISO   = 13;  // port D bit 5
-  const byte BB_MOSI   = 14;  // port D bit 6
-#else
-  // Atmega328
-  #if USE_ETHERNET_SHIELD
-    const byte MSPIM_SCK = 3;  // port D bit 3
+  
+  // 8 MHz clock on this pin
+  const byte CLOCKOUT = 9;
+  
+  /*
+  
+  Connect target processor like this:
+  
+    D4: (SCK)   --> SCK as per datasheet (If using Ethernet shield, use D3 instead)
+    D5: (SS)    --> goes to /RESET on target
+    D6: (MISO)  --> MISO as per datasheet
+    D7: (MOSI)  --> MOSI as per datasheet
+    
+    D9: 8 Mhz clock signal if required by target
+    
+  Connect SD card like this:
+    
+    D10: SS   (chip select)
+    D11: MOSI (DI - data into SD card)
+    D12: MISO (DO - data out from SD card)
+    D13: SCK  (CLK - clock)
+  
+  Both SD card and target processor will need +5V and Gnd connected.
+  
+  */
+  
+  // for fast port access
+  #ifdef __AVR_ATmega2560__
+    // Atmega2560
+    #define BB_MISO_PORT PINH
+    #define BB_MOSI_PORT PORTH
+    #if USE_ETHERNET_SHIELD  
+      #define BB_SCK_PORT PORTE   // Pin D3
+    #else
+      #define BB_SCK_PORT PORTG   // Pind D4
+    #endif
+    const byte BB_SCK_BIT = 5;
+    const byte BB_MISO_BIT = 3;
+    const byte BB_MOSI_BIT = 4;
+  #elif defined(__AVR_ATmega1284P__)
+    // Atmega1284P
+    #define BB_MISO_PORT PIND
+    #define BB_MOSI_PORT PORTD
+    #define BB_SCK_PORT PORTD
+    const byte BB_SCK_BIT = 3;
+    const byte BB_MISO_BIT = 5;
+    const byte BB_MOSI_BIT = 6;
   #else
-    const byte MSPIM_SCK = 4;  // port D bit 4
-  #endif  
-  const byte MSPIM_SS  = 5;  // port D bit 5
-  const byte BB_MISO   = 6;  // port D bit 6
-  const byte BB_MOSI   = 7;  // port D bit 7
-#endif
-
-// 8 MHz clock on this pin
-const byte CLOCKOUT = 9;
-
-/*
-
-Connect target processor like this:
-
-  D4: (SCK)   --> SCK as per datasheet (If using Ethernet shield, use D3 instead)
-  D5: (SS)    --> goes to /RESET on target
-  D6: (MISO)  --> MISO as per datasheet
-  D7: (MOSI)  --> MOSI as per datasheet
+    // Atmega328
+    #define BB_MISO_PORT PIND
+    #define BB_MOSI_PORT PORTD
+    #define BB_SCK_PORT PORTD
+    #if USE_ETHERNET_SHIELD  
+      const byte BB_SCK_BIT = 3;  // Pin D3
+    #else
+      const byte BB_SCK_BIT = 4;  // Pind D4
+    #endif
+    const byte BB_MISO_BIT = 6;
+    const byte BB_MOSI_BIT = 7;
+  #endif
   
-  D9: 8 Mhz clock signal if required by target
+  // control speed of programming
+  const byte BB_DELAY_MICROSECONDS = 4;
   
-Connect SD card like this:
   
-  D10: SS   (chip select)
-  D11: MOSI (DI - data into SD card)
-  D12: MISO (DO - data out from SD card)
-  D13: SCK  (CLK - clock)
-
-Both SD card and target processor will need +5V and Gnd connected.
-
-*/
-
-// for fast port access
-#ifdef __AVR_ATmega2560__
-  // Atmega2560
-  #define BB_MISO_PORT PINH
-  #define BB_MOSI_PORT PORTH
+  // target board reset goes to here
+  const byte RESET = MSPIM_SS;
+  
+  // SD chip select pin
   #if USE_ETHERNET_SHIELD  
-    #define BB_SCK_PORT PORTE   // Pin D3
+    const uint8_t chipSelect = 4;   // Ethernet shield uses D4 as SD select
   #else
-    #define BB_SCK_PORT PORTG   // Pind D4
+    const uint8_t chipSelect = SS;  // Otherwise normal slave select
   #endif
-  const byte BB_SCK_BIT = 5;
-  const byte BB_MISO_BIT = 3;
-  const byte BB_MOSI_BIT = 4;
-#elif defined(__AVR_ATmega1284P__)
-  // Atmega1284P
-  #define BB_MISO_PORT PIND
-  #define BB_MOSI_PORT PORTD
-  #define BB_SCK_PORT PORTD
-  const byte BB_SCK_BIT = 3;
-  const byte BB_MISO_BIT = 5;
-  const byte BB_MOSI_BIT = 6;
-#else
-  // Atmega328
-  #define BB_MISO_PORT PIND
-  #define BB_MOSI_PORT PORTD
-  #define BB_SCK_PORT PORTD
-  #if USE_ETHERNET_SHIELD  
-    const byte BB_SCK_BIT = 3;  // Pin D3
-  #else
-    const byte BB_SCK_BIT = 4;  // Pind D4
-  #endif
-  const byte BB_MISO_BIT = 6;
-  const byte BB_MOSI_BIT = 7;
-#endif
+  
+  const int MAX_FILENAME = 13;
+  const int LAST_FILENAME_LOCATION_IN_EEPROM = 0;
 
-// control speed of programming
-const byte BB_DELAY_MICROSECONDS = 4;
-
-
-// target board reset goes to here
-const byte RESET = MSPIM_SS;
-
-// SD chip select pin
-#if USE_ETHERNET_SHIELD  
-  const uint8_t chipSelect = 4;   // Ethernet shield uses D4 as SD select
-#else
-  const uint8_t chipSelect = SS;  // Otherwise normal slave select
-#endif
+#endif // (not) HIGH_VOLTAGE_PROGRAMMING
 
 const unsigned long NO_PAGE = 0xFFFFFFFF;
-const int MAX_FILENAME = 13;
-const int LAST_FILENAME_LOCATION_IN_EEPROM = 0;
 
 // actions to take
 enum {
@@ -310,36 +382,35 @@ const signatureType signatures [] PROGMEM =
   
   };  // end of signatures
 
-char name[MAX_FILENAME] = { 0 };  // current file name
-
-// get a line from serial (file name) 
-//  ignore spaces, tabs etc.
-//  forces to upper case
-void getline (char * buf, size_t bufsize)
-{
-byte i;
-  
-  // discard any old junk
-  while (Serial.available ())
-    Serial.read ();
+ 
+  // get a line from serial (file name) 
+  //  ignore spaces, tabs etc.
+  //  forces to upper case
+  void getline (char * buf, size_t bufsize)
+  {
+  byte i;
     
-  for (i = 0; i < bufsize - 1; )
-    {
-    if (Serial.available ())
+    // discard any old junk
+    while (Serial.available ())
+      Serial.read ();
+      
+    for (i = 0; i < bufsize - 1; )
       {
-      int c = Serial.read ();
+      if (Serial.available ())
+        {
+        int c = Serial.read ();
+        
+        if (c == '\n')  // newline terminates
+          break;
+        
+        if (!isspace (c))  // ignore spaces, carriage-return etc.
+          buf [i++] = toupper (c);
+        } // end if available
+      }  // end of for
+    buf [i] = 0;  // terminator
+    Serial.println (buf);  // echo what they typed
+    }     // end of getline
       
-      if (c == '\n')  // newline terminates
-        break;
-      
-      if (!isspace (c))  // ignore spaces, carriage-return etc.
-        buf [i++] = toupper (c);
-      } // end if available
-    }  // end of for
-  buf [i] = 0;  // terminator
-  Serial.println (buf);  // echo what they typed
-  }     // end of getline
-       
 // number of items in an array
 #define NUMITEMS(arg) ((unsigned int) (sizeof (arg) / sizeof (arg [0])))
 
@@ -386,39 +457,42 @@ enum {
     hexStartLinearAddressRecord // 05
 };
 
-// Bit Banged SPI transfer
-byte BB_SPITransfer (byte c)
-{       
-  byte bit;
+#if !HIGH_VOLTAGE_PROGRAMMING
+  
+  // Bit Banged SPI transfer
+  byte BB_SPITransfer (byte c)
+  {       
+    byte bit;
+     
+    for (bit = 0; bit < 8; bit++) 
+      {
+      // write MOSI on falling edge of previous clock
+      if (c & 0x80)
+          BB_MOSI_PORT |= bit (BB_MOSI_BIT);
+      else
+          BB_MOSI_PORT &= ~bit (BB_MOSI_BIT);
+      c <<= 1;
    
-  for (bit = 0; bit < 8; bit++) 
-    {
-    // write MOSI on falling edge of previous clock
-    if (c & 0x80)
-        BB_MOSI_PORT |= bit (BB_MOSI_BIT);
-    else
-        BB_MOSI_PORT &= ~bit (BB_MOSI_BIT);
-    c <<= 1;
- 
-    // read MISO
-    c |= (BB_MISO_PORT & bit (BB_MISO_BIT)) != 0;
- 
-   // clock high
-    BB_SCK_PORT |= bit (BB_SCK_BIT);
- 
-    // delay between rise and fall of clock
-    delayMicroseconds (BB_DELAY_MICROSECONDS);
- 
-    // clock low
-    BB_SCK_PORT &= ~bit (BB_SCK_BIT);
-
-    // delay between rise and fall of clock
-    delayMicroseconds (BB_DELAY_MICROSECONDS);
-    }
+      // read MISO
+      c |= (BB_MISO_PORT & bit (BB_MISO_BIT)) != 0;
    
-  return c;
-  }  // end of BB_SPITransfer 
+     // clock high
+      BB_SCK_PORT |= bit (BB_SCK_BIT);
+   
+      // delay between rise and fall of clock
+      delayMicroseconds (BB_DELAY_MICROSECONDS);
+   
+      // clock low
+      BB_SCK_PORT &= ~bit (BB_SCK_BIT);
+  
+      // delay between rise and fall of clock
+      delayMicroseconds (BB_DELAY_MICROSECONDS);
+      }
+     
+    return c;
+    }  // end of BB_SPITransfer 
 
+#endif // (not) HIGH_VOLTAGE_PROGRAMMING
 
 // if signature found in above table, this is its index
 int foundSig = -1;
@@ -427,56 +501,7 @@ byte lastAddressMSB = 0;
 signatureType currentSignature;
 bool haveSDcard;
 
-// execute one programming instruction ... b1 is command, b2, b3, b4 are arguments
-//  processor may return a result on the 4th transfer, this is returned.
-byte program (const byte b1, const byte b2 = 0, const byte b3 = 0, const byte b4 = 0)
-  {
-  noInterrupts ();
-  BB_SPITransfer (b1);  
-  BB_SPITransfer (b2);  
-  BB_SPITransfer (b3);  
-  byte b = BB_SPITransfer (b4);  
-  interrupts ();
-  return b;
-  } // end of program
-  
-// read a byte from flash memory
-byte readFlash (unsigned long addr)
-  {
-  byte high = (addr & 1) ? 0x08 : 0;  // set if high byte wanted
-  addr >>= 1;  // turn into word address
 
-  // set the extended (most significant) address byte if necessary
-  byte MSB = (addr >> 16) & 0xFF;
-  if (MSB != lastAddressMSB)
-    {
-    program (loadExtendedAddressByte, 0, MSB); 
-    lastAddressMSB = MSB;
-    }  // end if different MSB
-
-  return program (readProgramMemory | high, highByte (addr), lowByte (addr));
-  } // end of readFlash
-  
-// write a byte to the flash memory buffer (ready for committing)
-void writeFlash (unsigned long addr, const byte data)
-  {
-  byte high = (addr & 1) ? 0x08 : 0;  // set if high byte wanted
-  addr >>= 1;  // turn into word address
-  program (loadProgramMemory | high, 0, lowByte (addr), data);
-  } // end of writeFlash  
-      
-// show a byte in hex with leading zero and optional newline
-void showHex (const byte b, const bool newline = false, const bool show0x = true)
-  {
-  if (show0x)
-    Serial.print (F("0x"));
-  char buf [4];
-  sprintf (buf, "%02X ", b);
-  Serial.print (buf);
-  if (newline)
-    Serial.println ();
-  }  // end of showHex 
-    
 // convert two hex characters into a byte
 //    returns true if error, false if OK
 bool hexConv (const char * (& pStr), byte & b)
@@ -506,18 +531,329 @@ bool hexConv (const char * (& pStr), byte & b)
   return false;  // OK
   }  // end of hexConv
 
-// poll the target device until it is ready to be programmed
-void pollUntilReady ()
+// show a byte in hex with leading zero and optional newline
+void showHex (const byte b, const bool newline = false, const bool show0x = true)
   {
-  if (currentSignature.timedWrites)
-    delay (10);  // at least 2 x WD_FLASH which is 4.5 mS
-  else
-    {  
-    while ((program (pollReady) & 1) == 1)
-      {}  // wait till ready  
-    }  // end of if
-  }  // end of pollUntilReady
+  if (show0x)
+    Serial.print (F("0x"));
+  char buf [4];
+  sprintf (buf, "%02X ", b);
+  Serial.print (buf);
+  if (newline)
+    Serial.println ();
+  }  // end of showHex 
+  
+#if HIGH_VOLTAGE_PROGRAMMING
+  
+  // Latch in an action. The data argument is loaded into the appropriate latch. It might be
+  // a command, an address, or data, depending on the action type.
+  // BS1 and BS2 modify the actions.
+  
+  void HVprogram (const byte action, const byte data, const byte bs1 = 0, const byte bs2 = 0)
+    {
+    // XA1 and XA0 determine the action
+    switch (action)
+      {
+      case ACTION_LOAD_ADDRESS:
+          digitalWrite (XA1, LOW);
+          digitalWrite (XA0, LOW);
+          break;
+      
+      case ACTION_LOAD_DATA:
+          digitalWrite (XA1, LOW);
+          digitalWrite (XA0, HIGH);
+          break;
+          
+      case ACTION_LOAD_COMMAND:
+          digitalWrite (XA1, HIGH);
+          digitalWrite (XA0, LOW);
+          break;
+          
+      case ACTION_IDLE:
+          digitalWrite (XA1, HIGH);
+          digitalWrite (XA0, HIGH);
+          break;
+        
+      }  // end of switch on action
+      
+    digitalWrite (BS1, bs1);
+    digitalWrite (BS2, bs2);
+    
+    // set up the data byte
+    for (byte i = 0; i < 8; i++)
+      digitalWrite (dataPins [i], (data & bit (i)) ? HIGH : LOW);
+      
+    digitalWrite (XTAL1, HIGH);  // pulse XTAL to send command to target
+    digitalWrite (XTAL1, LOW);
+    }  // end of HVprogram	
+  
+  // Read a byte of data by setting the data pins to input, enabling output 
+  // (output from the target, input to the programmer), reading the 8 bits
+  // disabling output, and then putting the pins back as outputs.
+  // BS1 and BS2 modify what data is read (eg. high byte or low byte)
+  
+  byte HVreadData (const byte bs1 = LOW, const byte bs2 = LOW)
+    {
+    // set up requested bytes
+    digitalWrite (BS1, bs1);
+    digitalWrite (BS2, bs2);
+      
+    // make the data pins input, ready for reading from
+    for (byte i = 0; i < 8; i++)
+      pinMode (dataPins [i], INPUT);
+    // enable output, data should now be on the 8 pins
+    digitalWrite (OE, LOW);    // Enable output
+    delayMicroseconds (1);
+    // copy data in
+    byte result = 0;
+    for (byte i = 0; i < 8; i++)
+      if (digitalRead (dataPins [i]) == HIGH)
+        result |= bit (i);
+    // we are done reading, disable the chips output
+    digitalWrite (OE, HIGH);    // Disable output
+    delayMicroseconds (1);
+    // now our control lines can be output again
+    for (byte i = 0; i < 8; i++)
+      pinMode (dataPins [i], OUTPUT);
+    return result;
+    }  // end of HVreadData
+   
+  byte readFlash (unsigned long addr)
+    {
+    byte high = addr & 1;  // set if high byte wanted
+    addr >>= 1;  // turn into word address
+  
+    HVprogram (ACTION_LOAD_COMMAND, CMD_READ_FLASH);
+    HVprogram (ACTION_LOAD_ADDRESS, addr >> 8, HIGH);
+    HVprogram (ACTION_LOAD_ADDRESS, addr, LOW);
+      
+    return high ? HVreadData (HIGH) : HVreadData (LOW);
+    } // end of readFlash
+    
+  // write a byte to the flash memory buffer (ready for committing)
+  void writeFlash (unsigned long addr, const byte data)
+    {
 
+    byte high = (addr & 1) ? 0x08 : 0;  // set if high byte wanted
+    addr >>= 1;  // turn into word address
+
+    HVprogram (ACTION_LOAD_COMMAND, CMD_WRITE_FLASH);
+    HVprogram (ACTION_LOAD_ADDRESS, addr >> 8, HIGH);
+    HVprogram (ACTION_LOAD_ADDRESS, addr, LOW);
+    if (high)
+      {
+      HVprogram (ACTION_LOAD_DATA, data, HIGH);
+      digitalWrite (PAGEL, HIGH);  // pulse PAGEL to load latch
+      digitalWrite (PAGEL, LOW);
+      }
+    else
+      HVprogram (ACTION_LOAD_DATA, data, LOW);
+    
+    } // end of writeFlash  
+
+    
+  byte readFuse (const byte which)
+    {
+    if (which == calibrationByte)
+      {
+      HVprogram (ACTION_LOAD_COMMAND, CMD_READ_SIGNATURE);
+      HVprogram (ACTION_LOAD_ADDRESS, 0);  // as instructed
+      }
+    else
+      HVprogram (ACTION_LOAD_COMMAND, CMD_READ_FUSE_BITS);
+      
+    switch (which)
+      {
+      case lowFuse:         return HVreadData (LOW, LOW);
+      case highFuse:        return HVreadData (HIGH, HIGH);
+      case extFuse:         return HVreadData (LOW, HIGH);
+      case lockByte:        return HVreadData (HIGH, LOW);
+      case calibrationByte: return HVreadData (HIGH, LOW);
+      }  // end of switch 
+    return 0;
+    }  // end of readFuse
+    
+  void readSignature (byte sig [3])
+    {
+    HVprogram (ACTION_LOAD_COMMAND, CMD_READ_SIGNATURE);
+    for (byte i = 0; i < 3; i++)
+      {
+      HVprogram (ACTION_LOAD_ADDRESS, i);  // which byte
+      sig [i]  = HVreadData ();
+      }
+    }  // end of readSignature
+  
+  // poll the target device until it is ready to be programmed
+  void pollUntilReady ()
+    {
+    // wait until not busy
+    while (digitalRead (RDY) == LOW)
+      { }
+    }  // end of pollUntilReady
+  
+  // commit page to flash memory
+  void commitPage (unsigned long addr)
+    {
+    addr >>= 1;  // turn into word address
+    showProgress ();
+    HVprogram (ACTION_LOAD_ADDRESS, addr >> 8, HIGH);
+    HVprogram (ACTION_LOAD_ADDRESS, addr, LOW);
+    digitalWrite (WR, LOW);
+    digitalWrite (WR, HIGH);
+    pollUntilReady (); 
+    clearPage();  // clear ready for next page full
+    }  // end of commitPage
+  
+  void eraseMemory ()
+    {
+    HVprogram (ACTION_LOAD_COMMAND, CMD_CHIP_ERASE);
+
+    digitalWrite (WR, LOW);  // pulse WR to erase chip
+    digitalWrite (WR, HIGH);
+      
+    pollUntilReady (); 
+    clearPage();  // clear temporary page
+    }  // end of eraseMemory
+  
+  // write specified value to specified fuse/lock byte
+  void writeFuse (const byte newValue, const byte whichFuse)
+    {
+    if (newValue == 0)
+      return;  // ignore
+
+    // write fuse command
+    HVprogram (ACTION_LOAD_COMMAND, CMD_WRITE_FUSE_BITS);
+    
+    // latch in the new value
+    switch (whichFuse)
+      {
+      case lowFuse:    HVprogram (ACTION_LOAD_DATA, newValue, LOW,  LOW);  break; 
+      case highFuse:   HVprogram (ACTION_LOAD_DATA, newValue, HIGH, LOW);  break; 
+      case extFuse:    HVprogram (ACTION_LOAD_DATA, newValue, LOW,  HIGH); break; 
+      case lockByte:   HVprogram (ACTION_LOAD_DATA, newValue, LOW,  LOW);  break; 
+      default: return;
+      }  // end of switch
+      
+    digitalWrite (WR, LOW);  // pulse WR to program fuse
+    digitalWrite (WR, HIGH);
+    
+    pollUntilReady (); 
+    }  // end of writeFuse
+  
+#else  // (not) HIGH_VOLTAGE_PROGRAMMING
+
+  // execute one programming instruction ... b1 is command, b2, b3, b4 are arguments
+  //  processor may return a result on the 4th transfer, this is returned.
+  byte program (const byte b1, const byte b2 = 0, const byte b3 = 0, const byte b4 = 0)
+    {
+    noInterrupts ();
+    BB_SPITransfer (b1);  
+    BB_SPITransfer (b2);  
+    BB_SPITransfer (b3);  
+    byte b = BB_SPITransfer (b4);  
+    interrupts ();
+    return b;
+    } // end of program
+    
+  // read a byte from flash memory
+  byte readFlash (unsigned long addr)
+    {
+    byte high = (addr & 1) ? 0x08 : 0;  // set if high byte wanted
+    addr >>= 1;  // turn into word address
+  
+    // set the extended (most significant) address byte if necessary
+    byte MSB = (addr >> 16) & 0xFF;
+    if (MSB != lastAddressMSB)
+      {
+      program (loadExtendedAddressByte, 0, MSB); 
+      lastAddressMSB = MSB;
+      }  // end if different MSB
+  
+    return program (readProgramMemory | high, highByte (addr), lowByte (addr));
+    } // end of readFlash
+    
+  // write a byte to the flash memory buffer (ready for committing)
+  void writeFlash (unsigned long addr, const byte data)
+    {
+    byte high = (addr & 1) ? 0x08 : 0;  // set if high byte wanted
+    addr >>= 1;  // turn into word address
+    program (loadProgramMemory | high, 0, lowByte (addr), data);
+    } // end of writeFlash  
+        
+  byte readFuse (const byte which)
+    {
+    switch (which)
+      {
+      case lowFuse:         return program (readLowFuseByte, readLowFuseByteArg2);
+      case highFuse:        return program (readHighFuseByte, readHighFuseByteArg2);
+      case extFuse:         return program (readExtendedFuseByte, readExtendedFuseByteArg2);
+      case lockByte:        return program (readLockByte, readLockByteArg2);
+      case calibrationByte: return program (readCalibrationByte);
+      }  // end of switch 
+      
+     return 0;
+    }  // end of readFuse
+    
+  void readSignature (byte sig [3])
+    {
+    for (byte i = 0; i < 3; i++)
+      sig [i] = program (readSignatureByte, 0, i);
+    }  // end of readSignature
+    
+  // poll the target device until it is ready to be programmed
+  void pollUntilReady ()
+    {
+    if (currentSignature.timedWrites)
+      delay (10);  // at least 2 x WD_FLASH which is 4.5 mS
+    else
+      {  
+      while ((program (pollReady) & 1) == 1)
+        {}  // wait till ready  
+      }  // end of if
+    }  // end of pollUntilReady
+        
+  // commit page to flash memory
+  void commitPage (unsigned long addr)
+    {
+    addr >>= 1;  // turn into word address
+    
+    // set the extended (most significant) address byte if necessary
+    byte MSB = (addr >> 16) & 0xFF;
+    if (MSB != lastAddressMSB)
+      {
+      program (loadExtendedAddressByte, 0, MSB); 
+      lastAddressMSB = MSB;
+      }  // end if different MSB
+      
+    showProgress ();
+    
+    program (writeProgramMemory, highByte (addr), lowByte (addr));
+    pollUntilReady (); 
+    
+    clearPage();  // clear ready for next page full
+    }  // end of commitPage
+  
+  void eraseMemory ()
+    {
+    program (progamEnable, chipErase);   // erase it
+    delay (20);  // for Atmega8
+    pollUntilReady (); 
+    clearPage();  // clear temporary page
+    }  // end of eraseMemory
+    
+  // write specified value to specified fuse/lock byte
+  void writeFuse (const byte newValue, const byte whichFuse)
+    {
+    if (newValue == 0)
+      return;  // ignore
+    
+    program (progamEnable, fuseCommands [whichFuse], 0, newValue);
+    pollUntilReady (); 
+    }  // end of writeFuse
+    
+#endif // (not) HIGH_VOLTAGE_PROGRAMMING
+     
+  
 unsigned long pagesize;
 unsigned long pagemask;
 unsigned long oldPage;
@@ -539,27 +875,7 @@ void clearPage ()
     writeFlash (i, 0xFF);
 }  // end of clearPage
   
-// commit page to flash memory
-void commitPage (unsigned long addr)
-  {
-  addr >>= 1;  // turn into word address
-  
-  // set the extended (most significant) address byte if necessary
-  byte MSB = (addr >> 16) & 0xFF;
-  if (MSB != lastAddressMSB)
-    {
-    program (loadExtendedAddressByte, 0, MSB); 
-    lastAddressMSB = MSB;
-    }  // end if different MSB
-    
-  showProgress ();
-  
-  program (writeProgramMemory, highByte (addr), lowByte (addr));
-  pollUntilReady (); 
-  
-  clearPage();  // clear ready for next page full
-  }  // end of commitPage
- 
+
 // write data to temporary buffer, ready for committing  
 void writeData (const unsigned long addr, const byte * pData, const int length)
   {
@@ -576,6 +892,12 @@ void writeData (const unsigned long addr, const byte * pData, const int length)
     writeFlash (addr + i, pData [i]);
     }  // end of for
     
+#if HIGH_VOLTAGE_PROGRAMMING
+  // if even length force out last page latch
+  if ((length & 1) == 0)
+    writeFlash (addr + length, 0xFF);
+#endif // HIGH_VOLTAGE_PROGRAMMING    
+
   }  // end of writeData
   
 // count errors
@@ -612,12 +934,15 @@ void verifyData (const unsigned long addr, const byte * pData, const int length)
     
   }  // end of verifyData
   
-bool gotEndOfFile;
-unsigned long extendedAddress;
-
 unsigned long lowestAddress;
 unsigned long highestAddress;
 unsigned long bytesWritten;
+
+  
+#if !HIGH_VOLTAGE_PROGRAMMING
+
+bool gotEndOfFile;
+unsigned long extendedAddress;
 unsigned int lineCount;
 
 /*
@@ -645,6 +970,8 @@ Line format:
             * We don't use these
    
 */
+
+char name[MAX_FILENAME] = { 0 };  // current file name
 
 bool processLine (const char * pLine, const byte action)
   {
@@ -813,10 +1140,7 @@ bool readHexFile (const char * fName, const byte action)
     
     case writeToFlash:
       Serial.println (F("Erasing chip ..."));
-      program (progamEnable, chipErase);   // erase it
-      delay (20);  // for Atmega8
-      pollUntilReady (); 
-      clearPage();  // clear temporary page
+      eraseMemory ();
       Serial.println (F("Writing flash ..."));
       break;      
     } // end of switch
@@ -889,8 +1213,27 @@ bool readHexFile (const char * fName, const byte action)
   return false;
 }  // end of readHexFile
 
+#endif // (not) HIGH_VOLTAGE_PROGRAMMING
+
 bool startProgramming ()
   {
+    
+#if HIGH_VOLTAGE_PROGRAMMING
+  Serial.print (F("Activating high-voltage programming mode."));
+
+  digitalWrite (PAGEL, LOW);
+  digitalWrite (XA1, LOW);
+  digitalWrite (XA0, LOW);
+  digitalWrite (BS1, LOW);
+  digitalWrite (BS2, LOW);
+  // Enter programming mode
+  digitalWrite (VCC, HIGH);   // This brings /RESET to 12V after 40 uS by a transistor
+  delayMicroseconds (10);
+  digitalWrite (WR, HIGH);    // Read mode
+  digitalWrite (OE, HIGH);    // Not output-enable
+  delay(5);
+
+#else // (not)  HIGH_VOLTAGE_PROGRAMMING     
   Serial.print (F("Attempting to enter programming mode ..."));
     
   byte confirm;
@@ -936,6 +1279,8 @@ bool startProgramming ()
     
     } while (confirm != programAcknowledge);
     
+#endif // (not) HIGH_VOLTAGE_PROGRAMMING
+    
   Serial.println ();
   Serial.println (F("Entered programming mode OK."));
   return true;
@@ -943,6 +1288,15 @@ bool startProgramming ()
 
 void stopProgramming ()
   {
+#if HIGH_VOLTAGE_PROGRAMMING
+  // all pins to LOW
+  for (byte i = 0; i < 20; i++)
+    {
+    if (i != RDY)
+      digitalWrite (i, LOW);
+    }
+#else
+
   // turn off pull-ups
   digitalWrite (RESET, LOW);  
   digitalWrite (MSPIM_SCK, LOW);
@@ -954,6 +1308,8 @@ void stopProgramming ()
   pinMode (MSPIM_SCK, INPUT);
   pinMode (BB_MOSI, INPUT);
   pinMode (BB_MISO, INPUT);
+
+#endif // HIGH_VOLTAGE_PROGRAMMING
   
   Serial.println (F("Programming mode off."));
     
@@ -966,11 +1322,11 @@ void getSignature ()
     
   byte sig [3];
   Serial.print (F("Signature = "));
+  
+  readSignature (sig);
   for (byte i = 0; i < 3; i++)
-    {
-    sig [i] = program (readSignatureByte, 0, i); 
     showHex (sig [i]);
-    }  // end for each signature byte
+  
   Serial.println ();
   
   for (unsigned int j = 0; j < NUMITEMS (signatures); j++)
@@ -986,8 +1342,11 @@ void getSignature ()
       Serial.print (currentSignature.flashSize, DEC);
       Serial.println (F(" bytes."));
       
+#if !HIGH_VOLTAGE_PROGRAMMING
       // make sure extended address is zero to match lastAddressMSB variable
       program (loadExtendedAddressByte, 0, 0); 
+#endif
+
       return;
       }  // end of signature found
     }  // end of for each signature
@@ -997,11 +1356,11 @@ void getSignature ()
   
 void getFuseBytes ()
   {
-  fuses [lowFuse]   = program (readLowFuseByte, readLowFuseByteArg2);
-  fuses [highFuse]  = program (readHighFuseByte, readHighFuseByteArg2);
-  fuses [extFuse]   = program (readExtendedFuseByte, readExtendedFuseByteArg2);
-  fuses [lockByte]  = program (readLockByte, readLockByteArg2);
-  fuses [calibrationByte]  = program (readCalibrationByte);
+  fuses [lowFuse]   = readFuse (lowFuse);
+  fuses [highFuse]  = readFuse (highFuse);
+  fuses [extFuse]   = readFuse (extFuse);
+  fuses [lockByte]  = readFuse (lockByte);
+  fuses [calibrationByte]  = readFuse (calibrationByte);
   
   Serial.print (F("LFuse = "));
   showHex (fuses [lowFuse], true);
@@ -1026,17 +1385,7 @@ void showFuseName (const byte which)
     case calibrationByte: Serial.print (F("clock"));    break;    
     }  // end of switch  
   }  // end of showFuseName
-  
-// write specified value to specified fuse/lock byte
-void writeFuse (const byte newValue, const byte instruction)
-  {
-  if (newValue == 0)
-    return;  // ignore
-  
-  program (progamEnable, instruction, 0, newValue);
-  pollUntilReady (); 
-  }  // end of writeFuse
-  
+    
 bool updateFuses (const bool writeIt)
   {
   unsigned long addr;
@@ -1091,7 +1440,7 @@ bool updateFuses (const bool writeIt)
   if (writeIt)
     {
     Serial.print (F("Setting "));
-    writeFuse (fuses [fusenumber], fuseCommands [fusenumber]);      
+    writeFuse (fuses [fusenumber], fusenumber);      
     }
   else
     Serial.print (F("Suggest making "));
@@ -1105,6 +1454,8 @@ bool updateFuses (const bool writeIt)
     
   return false;
   }  // end of updateFuses
+
+#if !HIGH_VOLTAGE_PROGRAMMING
 
 void showDirectory ()
   {
@@ -1165,6 +1516,8 @@ void showDirectory ()
   
 char lastFileName [MAX_FILENAME] = { 0 };
   
+#endif // (not) HIGH_VOLTAGE_PROGRAMMING
+
 //------------------------------------------------------------------------------
 //      SETUP
 //------------------------------------------------------------------------------
@@ -1181,6 +1534,22 @@ void setup ()
   Serial.println (Version);
   Serial.println (F("Compiled on " __DATE__ " at " __TIME__ " with Arduino IDE " xstr(ARDUINO) "."));
   
+#if HIGH_VOLTAGE_PROGRAMMING
+
+  // all pins to output and LOW
+  for (byte i = 0; i < 20; i++)
+    {
+    if (i != RDY)
+      {
+      digitalWrite (i, LOW);
+      pinMode (i, OUTPUT);
+      }
+    }
+  // however the RDY pin is an input
+  pinMode (RDY, INPUT); 
+  
+#else // (not) HIGH_VOLTAGE_PROGRAMMING
+
   // set up 8 MHz timer on pin 9
   pinMode (CLOCKOUT, OUTPUT); 
   // set up Timer 1
@@ -1220,9 +1589,20 @@ void setup ()
       }  
     }
   
+#endif // (not) HIGH_VOLTAGE_PROGRAMMING
+  
 }  // end of setup
 
-
+  
+bool getYesNo ()
+  {
+  char response [5];
+  getline (response, sizeof response);
+    
+  return strcmp (response, "YES") == 0;
+  }  // end of getYesNo
+  
+#if !HIGH_VOLTAGE_PROGRAMMING
 
 bool chooseInputFile ()
   {
@@ -1274,14 +1654,6 @@ bool chooseInputFile ()
   
    return false;   
   }  // end of chooseInputFile
-  
-bool getYesNo ()
-  {
-  char response [5];
-  getline (response, sizeof response);
-    
-  return strcmp (response, "YES") == 0;
-  }  // end of getYesNo
   
 #if ALLOW_FILE_SAVING  
 void readFlashContents ()
@@ -1463,6 +1835,65 @@ void verifyFlashContents ()
   readHexFile(name, verifyFlash);
   }  // end of verifyFlashContents
   
+#endif // (not) HIGH_VOLTAGE_PROGRAMMING
+
+// --------------------- testing writing --------------------
+#if 0
+
+void writeFlashTest ()
+  {
+  progressBarCount = 0;
+
+  pagesize = currentSignature.pageSize;
+  pagemask = ~(pagesize - 1);
+  oldPage = NO_PAGE;
+
+ // const byte foo [] = "Nick Gammon eats worms";
+  
+  byte foo [256];
+  for (int i = 0; i < sizeof foo; i++)
+    foo [i] = i;
+    
+  unsigned int address;  
+  
+  // ensure back in programming mode  
+  if (!startProgramming ())
+    return;
+
+  Serial.println (F("Erasing chip ..."));
+  eraseMemory ();
+  Serial.println (F("Writing flash ..."));
+
+  for (address = 0; address < 8192; address += sizeof foo)
+    writeData (address, foo, sizeof (foo));
+   
+  // commit final page
+  if (oldPage != NO_PAGE)
+    commitPage (oldPage);
+
+  Serial.println ();   // finish line of dots
+
+  Serial.println (F("Verifying ..."));
+
+  for (address = 0; address < 8192; address += sizeof foo)
+    verifyData (address, foo, sizeof (foo));
+
+ Serial.println ();   // finish line of dots
+ if (errors == 0)
+    Serial.println (F("No errors found."));
+  else
+    {
+    Serial.print (errors, DEC);
+    Serial.println (F(" verification error(s)."));
+    if (errors > 100)
+      Serial.println (F("First 100 shown."));
+    }  // end if
+
+  Serial.println (F("Done!"));
+    
+  }  // end of writeFlashContents
+#endif  // --------------------- testing writing --------------------
+  
 void eraseFlashContents ()
   {
   Serial.println (F("Erase all flash memory. ARE YOU SURE? Type 'YES' to confirm ..."));  
@@ -1478,10 +1909,7 @@ void eraseFlashContents ()
     return;
     
   Serial.println (F("Erasing chip ..."));
-  program (progamEnable, chipErase);   // erase it
-  delay (20);  // for Atmega8
-  pollUntilReady (); 
-
+  eraseMemory ();
   Serial.println (F("Flash memory erased."));
     
   }  // end of eraseFlashContents
@@ -1589,7 +2017,7 @@ void modifyFuses ()
   Serial.println (F(" fuse ..."));
     
   // change it
-  writeFuse (newValue, fuseCommands [fusenumber]);      
+  writeFuse (newValue, fusenumber);      
   
   // confirm and show new value
   Serial.println (F("Fuse written."));
@@ -1669,20 +2097,23 @@ void loop ()
       
   switch (command)
     {
-#if ALLOW_FILE_SAVING      
-    case 'R': 
-      readFlashContents (); 
-      break; 
-#endif
+#if !HIGH_VOLTAGE_PROGRAMMING
 
-    case 'W': 
-      writeFlashContents (); 
-      break; 
-      
-    case 'V': 
-      verifyFlashContents (); 
-      break; 
-      
+  #if ALLOW_FILE_SAVING      
+      case 'R': 
+        readFlashContents (); 
+        break; 
+  #endif
+  
+      case 'W': 
+        writeFlashContents (); 
+        break; 
+        
+      case 'V': 
+        verifyFlashContents (); 
+        break; 
+#endif // (not) HIGH_VOLTAGE_PROGRAMMING
+
     case 'E': 
       eraseFlashContents (); 
       break; 
@@ -1692,10 +2123,19 @@ void loop ()
       break; 
 #endif
 
-   case 'L':
+#if !HIGH_VOLTAGE_PROGRAMMING
+    case 'L':
       showDirectory ();
       break;
+#endif // (not) HIGH_VOLTAGE_PROGRAMMING
      
+// --------------------- testing writing --------------------
+#if 0     
+    case 'T': 
+      writeFlashTest (); 
+      break; 
+#endif // --------------------- testing writing --------------------
+      
     default: 
       Serial.println (F("Unknown command.")); 
       break;
