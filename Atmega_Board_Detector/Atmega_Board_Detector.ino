@@ -18,11 +18,15 @@
 // Version 1.13: Added support for At90USB82, At90USB162
 // Version 1.14: Added support for ATmega328
 // Version 1.15: Added preliminary support for high-voltage programming mode for Atmega328 family
+// Version 1.16: Major tidy-ups, made code more modular
 
-const char Version [] = "1.15";
+const char Version [] = "1.16";
 
 // make true to use the high-voltage wiring, false for SPI wiring
-#define HIGH_VOLTAGE_PROGRAMMING true
+#define HIGH_VOLTAGE_PARALLEL true
+
+#define USE_BIT_BANGED_SPI false
+
 
 /*
 
@@ -67,182 +71,12 @@ const int ENTER_PROGRAMMING_ATTEMPTS = 50;
   const byte SCK = 13;    // SPI clock
 #endif
 
-// stringification for Arduino IDE version
-#define xstr(s) str(s)
-#define str(s) #s
+#include "HV_Pins.h"
+#include "General_Stuff.h"
 
-// number of items in an array
-#define NUMITEMS(arg) ((unsigned int) (sizeof (arg) / sizeof (arg [0])))
 
-#if HIGH_VOLTAGE_PROGRAMMING
-  // pin assignments for high-voltage programming
-  
-  // ---------------------------------------------
-  //                 Pin on target Atmega328 chip
-  // ---------------------------------------------
-  
-  const byte dataPins [8] = { 
-    6,                        // 14
-    7,                        // 15
-    8,                        // 16
-    9,                        // 17    
-    10,                       // 18
-    11,                       // 19    
-    12,                       // 23
-    13                        // 24
-    };    // end of dataPins
+#include "Signatures.h"
 
-  enum {                                        
-      RDY = A0, // !BSY       //  3      
-      OE = A1,  // active LOW //  4      
-      WR = A2,  // active LOW //  5      
-      BS1 = A3,               //  6      
-      XTAL1 = A4,             //  9      
-      XA0 = A5,               // 11      
-      XA1 = 2,                // 12      
-      PAGEL = 3,              // 13      
-      BS2 = 4,                // 25      
-      VCC = 5,                // 7 and 20
-  };  // end of other pins                  
-                                            
-  
-  /* Note: /RESET (Pin 1) is brought to 12V by connecting a transistor and MOSFET (high-side driver)
-     via a RC network to (the target) VCC. R = 22k, C = 10 nF. This gives a delay of around 40 uS between
-     VCC and /RESET. The transistor turns on the MOSFET, which switches +12V to /RESET.
-     
-     Also connect the grounds. Gnd to pins 8 and 22.
-     Decoupling capacitors: 0.1 uF between VCC/AVCC (pins 7 and 20) and Gnd.
-     Not connected on target: pins 2, 10, 21, 26, 27, 28.
-  */
-  
-  // when XTAL1 is pulsed the settings in XA1 and XA0 control the action
-  enum {
-       ACTION_LOAD_ADDRESS,
-       ACTION_LOAD_DATA,
-       ACTION_LOAD_COMMAND,
-       ACTION_IDLE
-       };    // end of actions
-
-  // high-voltage programming commands we can send (when action is ACTION_LOAD_COMMAND)
-  enum {
-        CMD_CHIP_ERASE       = 0b10000000,
-        CMD_WRITE_FUSE_BITS  = 0b01000000,
-        CMD_WRITE_LOCK_BITS  = 0b00100000,
-        CMD_WRITE_FLASH      = 0b00010000,
-        CMD_WRITE_EEPROM     = 0b00010001,
-        CMD_READ_SIGNATURE   = 0b00001000,
-        CMD_READ_FUSE_BITS   = 0b00000100,
-        CMD_READ_FLASH       = 0b00000010,
-        CMD_READ_EEPROM      = 0b00000011,
-        }; // end of commands
-       
-#else  // (not) HIGH_VOLTAGE_PROGRAMMING
-
-  // programming commands to send via SPI to the chip
-  enum {
-      progamEnable = 0xAC,
-      programAcknowledge = 0x53,
-  
-      readSignatureByte = 0x30,
-      readCalibrationByte = 0x38,
-  
-      readLowFuseByte = 0x50,       readLowFuseByteArg2 = 0x00,
-      readExtendedFuseByte = 0x50,  readExtendedFuseByteArg2 = 0x08,
-      readHighFuseByte = 0x58,      readHighFuseByteArg2 = 0x08,
-      readLockByte = 0x58,          readLockByteArg2 = 0x00,
-  
-      readProgramMemory = 0x20,
-      loadExtendedAddressByte = 0x4D,
-  
-  };  // end of enum
-#endif // (not) HIGH_VOLTAGE_PROGRAMMING
-
-// meaning of bytes in above array
-enum {
-      lowFuse,
-      highFuse,
-      extFuse,
-      lockByte,
-      calibrationByte
-};
-
-typedef struct {
-   byte sig [3];
-   char * desc;
-   unsigned long flashSize;
-   unsigned int baseBootSize;
-   unsigned long pageSize;     // bytes
-   byte fuseWithBootloaderSize;  // ie. one of: lowFuse, highFuse, extFuse
-   byte timedWrites;    // if pollUntilReady won't work by polling the chip
-} signatureType;
-
-const unsigned long kb = 1024;
-const byte NO_FUSE = 0xFF;
-
-// see Atmega datasheets
-const signatureType signatures [] PROGMEM =
-  {
-//     signature        description   flash size   bootloader  flash  fuse
-//                                                     size    page    to
-//                                                             size   change
-
-  // Attiny84 family
-  { { 0x1E, 0x91, 0x0B }, "ATtiny24",   2 * kb,           0,   32,   NO_FUSE },
-  { { 0x1E, 0x92, 0x07 }, "ATtiny44",   4 * kb,           0,   64,   NO_FUSE },
-  { { 0x1E, 0x93, 0x0C }, "ATtiny84",   8 * kb,           0,   64,   NO_FUSE },
-
-  // Attiny85 family
-  { { 0x1E, 0x91, 0x08 }, "ATtiny25",   2 * kb,           0,   32,   NO_FUSE },
-  { { 0x1E, 0x92, 0x06 }, "ATtiny45",   4 * kb,           0,   64,   NO_FUSE },
-  { { 0x1E, 0x93, 0x0B }, "ATtiny85",   8 * kb,           0,   64,   NO_FUSE },
-
-  // Atmega328 family
-  { { 0x1E, 0x92, 0x0A }, "ATmega48PA",   4 * kb,         0,    64,  NO_FUSE },
-  { { 0x1E, 0x93, 0x0F }, "ATmega88PA",   8 * kb,       256,   128,  extFuse },
-  { { 0x1E, 0x94, 0x0B }, "ATmega168PA", 16 * kb,       256,   128,  extFuse },
-  { { 0x1E, 0x95, 0x0F }, "ATmega328P",  32 * kb,       512,   128,  highFuse },
-  { { 0x1E, 0x95, 0x14 }, "ATmega328",   32 * kb,       512,   128,  highFuse },
-
-  // Atmega644 family
-  { { 0x1E, 0x94, 0x0A }, "ATmega164P",   16 * kb,      256,   128,  highFuse },
-  { { 0x1E, 0x95, 0x08 }, "ATmega324P",   32 * kb,      512,   128,  highFuse },
-  { { 0x1E, 0x96, 0x0A }, "ATmega644P",   64 * kb,   1 * kb,   256,  highFuse },
-
-  // Atmega2560 family
-  { { 0x1E, 0x96, 0x08 }, "ATmega640",    64 * kb,   1 * kb,   256,  highFuse },
-  { { 0x1E, 0x97, 0x03 }, "ATmega1280",  128 * kb,   1 * kb,   256,  highFuse },
-  { { 0x1E, 0x97, 0x04 }, "ATmega1281",  128 * kb,   1 * kb,   256,  highFuse },
-  { { 0x1E, 0x98, 0x01 }, "ATmega2560",  256 * kb,   1 * kb,   256,  highFuse },
-
-  { { 0x1E, 0x98, 0x02 }, "ATmega2561",  256 * kb,   1 * kb,   256,  highFuse },
-
-  // AT90USB family
-  { { 0x1E, 0x93, 0x82 }, "At90USB82",    8 * kb,       512,   128,  highFuse },
-  { { 0x1E, 0x94, 0x82 }, "At90USB162",  16 * kb,       512,   128,  highFuse },
-
-  // Atmega32U2 family
-  { { 0x1E, 0x93, 0x89 }, "ATmega8U2",    8 * kb,       512,   128,  highFuse  },
-  { { 0x1E, 0x94, 0x89 }, "ATmega16U2",  16 * kb,       512,   128,  highFuse  },
-  { { 0x1E, 0x95, 0x8A }, "ATmega32U2",  32 * kb,       512,   128,  highFuse  },
-
-  // Atmega32U4 family
-  { { 0x1E, 0x94, 0x88 }, "ATmega16U4",  16 * kb,       512,   128,  highFuse },
-  { { 0x1E, 0x95, 0x87 }, "ATmega32U4",  32 * kb,       512,   128,  highFuse },
-
-  // ATmega1284P family
-  { { 0x1E, 0x97, 0x05 }, "ATmega1284P", 128 * kb,   1 * kb,   256,  highFuse  },
-
-  // ATtiny4313 family
-  { { 0x1E, 0x91, 0x0A }, "ATtiny2313A",   2 * kb,        0,    32,  NO_FUSE  },
-  { { 0x1E, 0x92, 0x0D }, "ATtiny4313",    4 * kb,        0,    64,  NO_FUSE  },
-
-  // ATtiny13 family
-  { { 0x1E, 0x90, 0x07 }, "ATtiny13A",     1 * kb,        0,    32,  NO_FUSE },
-
-   // Atmega8A family
-  { { 0x1E, 0x93, 0x07 }, "ATmega8A",      8 * kb,      256,    64,  highFuse, true },
-
-  };  // end of signatures
 
 // if signature found in above table, this is its index
 int foundSig = -1;
@@ -346,174 +180,6 @@ void printProgStr (const char * str)
     Serial.print (c);
 } // end of printProgStr
 
-
-#if HIGH_VOLTAGE_PROGRAMMING
-
-  // Latch in an action. The data argument is loaded into the appropriate latch. It might be
-  // a command, an address, or data, depending on the action type.
-  // BS1 and BS2 modify the actions.
-  
-  void HVprogram (const byte action, const byte data, const byte bs1 = 0, const byte bs2 = 0)
-    {
-    // XA1 and XA0 determine the action
-    switch (action)
-      {
-      case ACTION_LOAD_ADDRESS:
-          digitalWrite (XA1, LOW);
-          digitalWrite (XA0, LOW);
-          break;
-      
-      case ACTION_LOAD_DATA:
-          digitalWrite (XA1, LOW);
-          digitalWrite (XA0, HIGH);
-          break;
-          
-      case ACTION_LOAD_COMMAND:
-          digitalWrite (XA1, HIGH);
-          digitalWrite (XA0, LOW);
-          break;
-          
-      case ACTION_IDLE:
-          digitalWrite (XA1, HIGH);
-          digitalWrite (XA0, HIGH);
-          break;
-        
-      }  // end of switch on action
-      
-    digitalWrite (BS1, bs1);
-    digitalWrite (BS2, bs2);
-    
-    // set up the data byte
-    for (byte i = 0; i < 8; i++)
-      digitalWrite (dataPins [i], (data & bit (i)) ? HIGH : LOW);
-      
-    digitalWrite (XTAL1, HIGH);  // pulse XTAL to send command to target
-    digitalWrite (XTAL1, LOW);
-    }  // end of HVprogram	
-  
-  // Read a byte of data by setting the data pins to input, enabling output 
-  // (output from the target, input to the programmer), reading the 8 bits
-  // disabling output, and then putting the pins back as outputs.
-  // BS1 and BS2 modify what data is read (eg. high byte or low byte)
-  
-  byte HVreadData (const byte bs1 = LOW, const byte bs2 = LOW)
-    {
-    // set up requested bytes
-    digitalWrite (BS1, bs1);
-    digitalWrite (BS2, bs2);
-      
-    // make the data pins input, ready for reading from
-    for (byte i = 0; i < 8; i++)
-      pinMode (dataPins [i], INPUT);
-    // enable output, data should now be on the 8 pins
-    digitalWrite (OE, LOW);    // Enable output
-    delayMicroseconds (1);
-    // copy data in
-    byte result = 0;
-    for (byte i = 0; i < 8; i++)
-      if (digitalRead (dataPins [i]) == HIGH)
-        result |= bit (i);
-    // we are done reading, disable the chips output
-    digitalWrite (OE, HIGH);    // Disable output
-    delayMicroseconds (1);
-    // now our control lines can be output again
-    for (byte i = 0; i < 8; i++)
-      pinMode (dataPins [i], OUTPUT);
-    return result;
-    }  // end of HVreadData
-   
-  byte readFlash (unsigned long addr)
-    {
-    byte high = addr & 1;  // set if high byte wanted
-    addr >>= 1;  // turn into word address
-  
-    HVprogram (ACTION_LOAD_COMMAND, CMD_READ_FLASH);
-    HVprogram (ACTION_LOAD_ADDRESS, addr >> 8, HIGH);
-    HVprogram (ACTION_LOAD_ADDRESS, addr, LOW);
-      
-    return high ? HVreadData (HIGH) : HVreadData (LOW);
-    } // end of readFlash
-    
-  byte readFuse (const byte which)
-    {
-    if (which == calibrationByte)
-      {
-      HVprogram (ACTION_LOAD_COMMAND, CMD_READ_SIGNATURE);
-      HVprogram (ACTION_LOAD_ADDRESS, 0);  // as instructed
-      }
-    else
-      HVprogram (ACTION_LOAD_COMMAND, CMD_READ_FUSE_BITS);
-      
-    switch (which)
-      {
-      case lowFuse:         return HVreadData (LOW, LOW);
-      case highFuse:        return HVreadData (HIGH, HIGH);
-      case extFuse:         return HVreadData (LOW, HIGH);
-      case lockByte:        return HVreadData (HIGH, LOW);
-      case calibrationByte: return HVreadData (HIGH, LOW);
-      }  // end of switch 
-    return 0;
-    }  // end of readFuse
-    
-  void readSignature (byte sig [3])
-    {
-    HVprogram (ACTION_LOAD_COMMAND, CMD_READ_SIGNATURE);
-    for (byte i = 0; i < 3; i++)
-      {
-      HVprogram (ACTION_LOAD_ADDRESS, i);  // which byte
-      sig [i]  = HVreadData ();
-      }
-    }  // end of readSignature
-  
-#else  // (not) HIGH_VOLTAGE_PROGRAMMING
-
-  // execute one programming instruction ... b1 is command, b2, b3, b4 are arguments
-  //  processor may return a result on the 4th transfer, this is returned.
-  byte program (const byte b1, const byte b2 = 0, const byte b3 = 0, const byte b4 = 0)
-    {
-    SPI.transfer (b1);
-    SPI.transfer (b2);
-    SPI.transfer (b3);
-    return SPI.transfer (b4);
-    } // end of program
-  
-  byte readFlash (unsigned long addr)
-    {
-  
-    // set the extended (most significant) address byte if necessary
-    byte MSB = (addr >> 16) & 0xFF;
-    if (MSB != lastAddressMSB)
-      {
-      program (loadExtendedAddressByte, 0, MSB);
-      lastAddressMSB = MSB;
-      }  // end if different MSB
-  
-    byte high = (addr & 1) ? 0x08 : 0;  // set if high byte wanted
-    addr >>= 1;  // turn into word address
-    return program (readProgramMemory | high, highByte (addr), lowByte (addr));
-    } // end of readFlash
-  
-  byte readFuse (const byte which)
-    {
-    switch (which)
-      {
-      case lowFuse:         return program (readLowFuseByte, readLowFuseByteArg2);
-      case highFuse:        return program (readHighFuseByte, readHighFuseByteArg2);
-      case extFuse:         return program (readExtendedFuseByte, readExtendedFuseByteArg2);
-      case lockByte:        return program (readLockByte, readLockByteArg2);
-      case calibrationByte: return program (readCalibrationByte);
-      }  // end of switch 
-      
-     return 0;
-    }  // end of readFuse
-    
-  void readSignature (char sig [3])
-    {
-    for (byte i = 0; i < 3; i++)
-      sig [i] = program (readSignatureByte, 0, i);
-    }  // end of readSignature
-  
-#endif // (not) HIGH_VOLTAGE_PROGRAMMING
 
 void showHex (const byte b, const boolean newline = false)
   {
@@ -687,71 +353,6 @@ void readProgram ()
 
   } // end of readProgram
 
-bool startProgramming ()
-  {
-  
-#if HIGH_VOLTAGE_PROGRAMMING
-  Serial.print (F("Activating high-voltage programming mode."));
-
-  digitalWrite (PAGEL, LOW);
-  digitalWrite (XA1, LOW);
-  digitalWrite (XA0, LOW);
-  digitalWrite (BS1, LOW);
-  digitalWrite (BS2, LOW);
-  // Enter programming mode
-  digitalWrite (VCC, HIGH);   // This brings /RESET to 12V after 40 uS by a transistor
-  delayMicroseconds (10);
-  digitalWrite (WR, HIGH);    // Read mode
-  digitalWrite (OE, HIGH);    // Not output-enable
-  delay(5);
-
-#else // (not)  HIGH_VOLTAGE_PROGRAMMING 
-
-  Serial.print (F("Attempting to enter programming mode ..."));
-  digitalWrite (RESET, HIGH);  // ensure SS stays high for now
-  SPI.begin ();
-  SPI.setClockDivider (SPI_CLOCK_DIV64);
-
-  byte confirm;
-  pinMode (RESET, OUTPUT);
-  pinMode (SCK, OUTPUT);
-  unsigned int timeout = 0;
-
-  // we are in sync if we get back programAcknowledge on the third byte
-  do
-    {
-    delay (100);
-    // ensure SCK low
-    digitalWrite (SCK, LOW);
-    // then pulse reset, see page 309 of datasheet
-    digitalWrite (RESET, HIGH);
-    delay (1);  // pulse for at least 2 clock cycles
-    digitalWrite (RESET, LOW);
-    delay (25);  // wait at least 20 mS
-    SPI.transfer (progamEnable);
-    SPI.transfer (programAcknowledge);
-    confirm = SPI.transfer (0);
-    SPI.transfer (0);
-    
-    if (confirm != programAcknowledge)
-      {
-      Serial.print (".");
-      if (timeout++ >= ENTER_PROGRAMMING_ATTEMPTS)
-        {
-        Serial.println ();
-        Serial.println (F("Failed to enter programming mode. Double-check wiring!"));
-        return false;
-        }  // end of too many attempts
-      }  // end of not entered programming mode
-    } while (confirm != programAcknowledge);
-
-#endif // (not) HIGH_VOLTAGE_PROGRAMMING
-
-  Serial.println ();
-  Serial.println (F("Entered programming mode OK."));
-  return true;
-  }  // end of startProgramming
-
 void getSignature ()
   {
   foundSig = -1;
@@ -808,30 +409,7 @@ void setup ()
   Serial.println (Version);
   Serial.println (F("Compiled on " __DATE__ " at " __TIME__ " with Arduino IDE " xstr(ARDUINO) "."));
 
-#if HIGH_VOLTAGE_PROGRAMMING
-
-  // all pins to output and LOW
-  for (byte i = 0; i < 20; i++)
-    {
-    if (i != RDY)
-      {
-      digitalWrite (i, LOW);
-      pinMode (i, OUTPUT);
-      }
-    }
-  // however the RDY pin is an input
-  pinMode (RDY, INPUT); 
-  
-#else // (not) HIGH_VOLTAGE_PROGRAMMING
-
-  pinMode (CLOCKOUT, OUTPUT);
-
-  // set up Timer 1
-  TCCR1A = bit (COM1A0);  // toggle OC1A on Compare Match
-  TCCR1B = bit (WGM12) | bit (CS10);   // CTC, no prescaling
-  OCR1A =  0;       // output every cycle
-
-#endif // (not) HIGH_VOLTAGE_PROGRAMMING
+  initPins ();
 
   if (startProgramming ())
     {
@@ -845,18 +423,9 @@ void setup ()
   
     readProgram ();
     }   // end of if entered programming mode OK
-
    
-#if HIGH_VOLTAGE_PROGRAMMING
-    
-  // all pins to LOW
-  for (byte i = 0; i < 20; i++)
-    {
-    if (i != RDY)
-      digitalWrite (i, LOW);
-    }
-#endif // HIGH_VOLTAGE_PROGRAMMING
-    
+   stopProgramming ();
+   
  }  // end of setup
 
 void loop () {}
