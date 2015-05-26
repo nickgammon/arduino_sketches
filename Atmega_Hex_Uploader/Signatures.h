@@ -1,3 +1,9 @@
+// Signatures.h
+//
+// Signatures and extra information for known chips
+//
+// Author: Nick Gammon
+
 
 // copy of fuses/lock bytes found for this processor
 byte fuses [5];
@@ -13,13 +19,13 @@ enum {
 
 // structure to hold signature and other relevant data about each chip
 typedef struct {
-   byte sig [3];
-   char desc [14];
-   unsigned long flashSize;
-   unsigned int baseBootSize;
-   unsigned long pageSize;     // bytes
-   byte fuseWithBootloaderSize;  // ie. one of: lowFuse, highFuse, extFuse
-   byte timedWrites;    // if pollUntilReady won't work by polling the chip
+   byte sig [3];                // chip signature
+   char desc [14];              // fixed array size keeps chip names in PROGMEM
+   unsigned long flashSize;     // how big the flash is (bytes)
+   unsigned int baseBootSize;   // base bootloader size (others are multiples of 2/4/8)
+   unsigned long pageSize;      // flash programming page size (bytes)
+   byte fuseWithBootloaderSize; // ie. one of: lowFuse, highFuse, extFuse
+   bool timedWrites;            // true if pollUntilReady won't work by polling the chip
 } signatureType;
 
 const unsigned long kb = 1024;

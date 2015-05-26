@@ -1,4 +1,12 @@
-#if !HIGH_VOLTAGE_PARALLEL
+// File_Utils.ino
+//
+// Functions related to the SD card (if present) including listing the directory, 
+// and reading an interpreting a .HEX file.
+//
+// Author: Nick Gammon
+
+
+#if SD_CARD_ACTIVE
 
 // types of record in .hex file
 enum {
@@ -609,4 +617,4 @@ void initFile ()
     }
   }  // end of initFile
   
-#endif // (not) HIGH_VOLTAGE_PARALLEL
+#endif // SD_CARD_ACTIVE

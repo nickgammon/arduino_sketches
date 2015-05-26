@@ -1,4 +1,11 @@
-#if !HIGH_VOLTAGE_PARALLEL
+// ICSP_Utils.ino
+//
+// Functions needed for SPI (ICSP) progamming
+//
+// Author: Nick Gammon
+
+
+#if ICSP_PROGRAMMING
 
 
 // programming commands to send via SPI to the chip
@@ -34,128 +41,128 @@ enum {
 // which program instruction writes which fuse
 const byte fuseCommands [4] = { writeLowFuseByte, writeHighFuseByte, writeExtendedFuseByte, writeLockByte };
 
-  // execute one programming instruction ... b1 is command, b2, b3, b4 are arguments
-  //  processor may return a result on the 4th transfer, this is returned.
-  byte program (const byte b1, const byte b2 = 0, const byte b3 = 0, const byte b4 = 0)
-    {
-    noInterrupts ();
+// execute one programming instruction ... b1 is command, b2, b3, b4 are arguments
+//  processor may return a result on the 4th transfer, this is returned.
+byte program (const byte b1, const byte b2 = 0, const byte b3 = 0, const byte b4 = 0)
+  {
+  noInterrupts ();
 #if USE_BIT_BANGED_SPI  
-    
-    BB_SPITransfer (b1);  
-    BB_SPITransfer (b2);  
-    BB_SPITransfer (b3);  
-    byte b = BB_SPITransfer (b4);  
+  
+  BB_SPITransfer (b1);  
+  BB_SPITransfer (b2);  
+  BB_SPITransfer (b3);  
+  byte b = BB_SPITransfer (b4);  
 #else
-    SPI.transfer (b1);
-    SPI.transfer (b2);
-    SPI.transfer (b3);
-    byte b = SPI.transfer (b4);
+  SPI.transfer (b1);
+  SPI.transfer (b2);
+  SPI.transfer (b3);
+  byte b = SPI.transfer (b4);
 #endif // (not) USE_BIT_BANGED_SPI
 
-    interrupts ();
-    return b;
-    } // end of program
-    
-  // read a byte from flash memory
-  byte readFlash (unsigned long addr)
-    {
-    byte high = (addr & 1) ? 0x08 : 0;  // set if high byte wanted
-    addr >>= 1;  // turn into word address
+  interrupts ();
+  return b;
+  } // end of program
   
-    // set the extended (most significant) address byte if necessary
-    byte MSB = (addr >> 16) & 0xFF;
-    if (MSB != lastAddressMSB)
-      {
-      program (loadExtendedAddressByte, 0, MSB); 
-      lastAddressMSB = MSB;
-      }  // end if different MSB
+// read a byte from flash memory
+byte readFlash (unsigned long addr)
+  {
+  byte high = (addr & 1) ? 0x08 : 0;  // set if high byte wanted
+  addr >>= 1;  // turn into word address
+
+  // set the extended (most significant) address byte if necessary
+  byte MSB = (addr >> 16) & 0xFF;
+  if (MSB != lastAddressMSB)
+    {
+    program (loadExtendedAddressByte, 0, MSB); 
+    lastAddressMSB = MSB;
+    }  // end if different MSB
+
+  return program (readProgramMemory | high, highByte (addr), lowByte (addr));
+  } // end of readFlash
   
-    return program (readProgramMemory | high, highByte (addr), lowByte (addr));
-    } // end of readFlash
-    
-  // write a byte to the flash memory buffer (ready for committing)
-  void writeFlash (unsigned long addr, const byte data)
-    {
-    byte high = (addr & 1) ? 0x08 : 0;  // set if high byte wanted
-    addr >>= 1;  // turn into word address
-    program (loadProgramMemory | high, 0, lowByte (addr), data);
-    } // end of writeFlash  
-        
-  byte readFuse (const byte which)
-    {
-    switch (which)
-      {
-      case lowFuse:         return program (readLowFuseByte, readLowFuseByteArg2);
-      case highFuse:        return program (readHighFuseByte, readHighFuseByteArg2);
-      case extFuse:         return program (readExtendedFuseByte, readExtendedFuseByteArg2);
-      case lockByte:        return program (readLockByte, readLockByteArg2);
-      case calibrationByte: return program (readCalibrationByte);
-      }  // end of switch 
+// write a byte to the flash memory buffer (ready for committing)
+void writeFlash (unsigned long addr, const byte data)
+  {
+  byte high = (addr & 1) ? 0x08 : 0;  // set if high byte wanted
+  addr >>= 1;  // turn into word address
+  program (loadProgramMemory | high, 0, lowByte (addr), data);
+  } // end of writeFlash  
       
-     return 0;
-    }  // end of readFuse
-    
-  void readSignature (byte sig [3])
+byte readFuse (const byte which)
+  {
+  switch (which)
     {
-    for (byte i = 0; i < 3; i++)
-      sig [i] = program (readSignatureByte, 0, i);
-      
-    // make sure extended address is zero to match lastAddressMSB variable
-    program (loadExtendedAddressByte, 0, 0); 
-    lastAddressMSB = 0;
+    case lowFuse:         return program (readLowFuseByte, readLowFuseByteArg2);
+    case highFuse:        return program (readHighFuseByte, readHighFuseByteArg2);
+    case extFuse:         return program (readExtendedFuseByte, readExtendedFuseByteArg2);
+    case lockByte:        return program (readLockByte, readLockByteArg2);
+    case calibrationByte: return program (readCalibrationByte);
+    }  // end of switch 
+    
+   return 0;
+  }  // end of readFuse
   
-    }  // end of readSignature
+void readSignature (byte sig [3])
+  {
+  for (byte i = 0; i < 3; i++)
+    sig [i] = program (readSignatureByte, 0, i);
     
-  // poll the target device until it is ready to be programmed
-  void pollUntilReady ()
-    {
-    if (currentSignature.timedWrites)
-      delay (10);  // at least 2 x WD_FLASH which is 4.5 mS
-    else
-      {  
-      while ((program (pollReady) & 1) == 1)
-        {}  // wait till ready  
-      }  // end of if
-    }  // end of pollUntilReady
-        
-  // commit page to flash memory
-  void commitPage (unsigned long addr)
-    {
-    addr >>= 1;  // turn into word address
-    
-    // set the extended (most significant) address byte if necessary
-    byte MSB = (addr >> 16) & 0xFF;
-    if (MSB != lastAddressMSB)
-      {
-      program (loadExtendedAddressByte, 0, MSB); 
-      lastAddressMSB = MSB;
-      }  // end if different MSB
-      
-    showProgress ();
-    
-    program (writeProgramMemory, highByte (addr), lowByte (addr));
-    pollUntilReady (); 
-    
-    clearPage();  // clear ready for next page full
-    }  // end of commitPage
+  // make sure extended address is zero to match lastAddressMSB variable
+  program (loadExtendedAddressByte, 0, 0); 
+  lastAddressMSB = 0;
+
+  }  // end of readSignature
   
-  void eraseMemory ()
+// poll the target device until it is ready to be programmed
+void pollUntilReady ()
+  {
+  if (currentSignature.timedWrites)
+    delay (10);  // at least 2 x WD_FLASH which is 4.5 mS
+  else
+    {  
+    while ((program (pollReady) & 1) == 1)
+      {}  // wait till ready  
+    }  // end of if
+  }  // end of pollUntilReady
+      
+// commit page to flash memory
+void commitPage (unsigned long addr)
+  {
+  addr >>= 1;  // turn into word address
+  
+  // set the extended (most significant) address byte if necessary
+  byte MSB = (addr >> 16) & 0xFF;
+  if (MSB != lastAddressMSB)
     {
-    program (progamEnable, chipErase);   // erase it
-    delay (20);  // for Atmega8
-    pollUntilReady (); 
-    clearPage();  // clear temporary page
-    }  // end of eraseMemory
+    program (loadExtendedAddressByte, 0, MSB); 
+    lastAddressMSB = MSB;
+    }  // end if different MSB
     
-  // write specified value to specified fuse/lock byte
-  void writeFuse (const byte newValue, const byte whichFuse)
-    {
-    if (newValue == 0)
-      return;  // ignore
-    
-    program (progamEnable, fuseCommands [whichFuse], 0, newValue);
-    pollUntilReady (); 
-    }  // end of writeFuse
+  showProgress ();
+  
+  program (writeProgramMemory, highByte (addr), lowByte (addr));
+  pollUntilReady (); 
+  
+  clearPage();  // clear ready for next page full
+  }  // end of commitPage
+
+void eraseMemory ()
+  {
+  program (progamEnable, chipErase);   // erase it
+  delay (20);  // for Atmega8
+  pollUntilReady (); 
+  clearPage();  // clear temporary page
+  }  // end of eraseMemory
+  
+// write specified value to specified fuse/lock byte
+void writeFuse (const byte newValue, const byte whichFuse)
+  {
+  if (newValue == 0)
+    return;  // ignore
+  
+  program (progamEnable, fuseCommands [whichFuse], 0, newValue);
+  pollUntilReady (); 
+  }  // end of writeFuse
 
 // put chip into programming mode    
 bool startProgramming ()
@@ -282,4 +289,4 @@ void initPins ()
   
   }  // end of initPins
   
-#endif // (not) HIGH_VOLTAGE_PARALLEL
+#endif // ICSP_PROGRAMMING

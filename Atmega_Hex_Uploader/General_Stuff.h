@@ -1,3 +1,8 @@
+// General_Stuff.h
+//
+// Variables and defines required by all sketches
+//
+// Author: Nick Gammon
 
 unsigned long pagesize;
 unsigned long pagemask;

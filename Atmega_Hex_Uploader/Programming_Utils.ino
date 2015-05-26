@@ -1,3 +1,8 @@
+// Programming_Utils.ino
+//
+// General useful functions needed for all sketches
+//
+// Author: Nick Gammon
 
 // show one progress symbol, wrap at 64 characters
 void showProgress ()

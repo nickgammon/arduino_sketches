@@ -51,8 +51,27 @@ const bool allowTargetToRun = true;  // if true, programming lines are freed whe
 
 #define USE_ETHERNET_SHIELD false  // Use the Arduino Ethernet Shield for the SD card
 
-// make true to use the high-voltage wiring, false for SPI wiring
+// make true if you have spare pins for the SD card interface
+#define SD_CARD_ACTIVE false
+
+// make true to use the high-voltage parallel wiring
 #define HIGH_VOLTAGE_PARALLEL false
+// make true to use the high-voltage serial wiring
+#define HIGH_VOLTAGE_SERIAL true
+// make true to use ICSP programming
+#define ICSP_PROGRAMMING false
+
+#if HIGH_VOLTAGE_PARALLEL && HIGH_VOLTAGE_SERIAL
+  #error Cannot use both high-voltage parallel and serial at the same time
+#endif 
+
+#if (HIGH_VOLTAGE_PARALLEL || HIGH_VOLTAGE_SERIAL) && ICSP_PROGRAMMING
+  #error Cannot use ICSP and high-voltage programming at the same time
+#endif
+
+#if !(HIGH_VOLTAGE_PARALLEL || HIGH_VOLTAGE_SERIAL || ICSP_PROGRAMMING)
+  #error Choose a programming mode: HIGH_VOLTAGE_PARALLEL, HIGH_VOLTAGE_SERIAL or ICSP_PROGRAMMING 
+#endif
 
 #define USE_BIT_BANGED_SPI true
 
@@ -535,9 +554,9 @@ void setup ()
   
   initPins ();
   
-#if !HIGH_VOLTAGE_PARALLEL  
+#if SD_CARD_ACTIVE  
   initFile ();
-#endif 
+#endif // SD_CARD_ACTIVE
   
 }  // end of setup
 
@@ -552,10 +571,12 @@ bool getYesNo ()
 
 
 // --------------------- testing writing --------------------
-#if 0
+//#if 0
 
 void writeFlashTest ()
   {
+  const unsigned int BYTES_TO_WRITE = 512;
+  
   progressBarCount = 0;
 
   pagesize = currentSignature.pageSize;
@@ -578,7 +599,7 @@ void writeFlashTest ()
   eraseMemory ();
   Serial.println (F("Writing flash ..."));
 
-  for (address = 0; address < 8192; address += sizeof foo)
+  for (address = 0; address < BYTES_TO_WRITE; address += sizeof foo)
     writeData (address, foo, sizeof (foo));
    
   // commit final page
@@ -589,7 +610,7 @@ void writeFlashTest ()
 
   Serial.println (F("Verifying ..."));
 
-  for (address = 0; address < 8192; address += sizeof foo)
+  for (address = 0; address < BYTES_TO_WRITE; address += sizeof foo)
     verifyData (address, foo, sizeof (foo));
 
  Serial.println ();   // finish line of dots
@@ -606,7 +627,7 @@ void writeFlashTest ()
   Serial.println (F("Done!"));
     
   }  // end of writeFlashContents
-#endif  // --------------------- testing writing --------------------
+//#endif  // --------------------- testing writing --------------------
   
 void eraseFlashContents ()
   {
@@ -752,6 +773,7 @@ void loop ()
   if (!startProgramming ())
     {
     Serial.println (F("Halted."));
+    stopProgramming ();
     while  (true)
       {}
     }  // end of could not enter programming mode
@@ -763,6 +785,7 @@ void loop ()
   if (foundSig == -1)
     {
     Serial.println (F("Halted."));
+    stopProgramming ();
     while  (true)
       {}
     }  // end of no signature
@@ -773,6 +796,8 @@ void loop ()
 #if ALLOW_MODIFY_FUSES    
   Serial.println (F(" [F] modify fuses"));
 #endif
+
+#if SD_CARD_ACTIVE
   if (haveSDcard)
     {
     Serial.println (F(" [L] list directory"));
@@ -782,6 +807,8 @@ void loop ()
     Serial.println (F(" [V] verify flash (compare to disk)"));
     Serial.println (F(" [W] write to flash (read from disk)"));
     }  // end of if SD card detected
+#endif // SD_CARD_ACTIVE
+
   Serial.println (F("Enter action:"));
   
   // discard any old junk
@@ -811,7 +838,7 @@ void loop ()
       
   switch (command)
     {
-#if !HIGH_VOLTAGE_PARALLEL
+#if SD_CARD_ACTIVE
 
   #if ALLOW_FILE_SAVING      
       case 'R': 
@@ -826,7 +853,7 @@ void loop ()
       case 'V': 
         verifyFlashContents (); 
         break; 
-#endif // (not) HIGH_VOLTAGE_PARALLEL
+#endif // SD_CARD_ACTIVE
 
     case 'E': 
       eraseFlashContents (); 
@@ -837,18 +864,18 @@ void loop ()
       break; 
 #endif
 
-#if !HIGH_VOLTAGE_PARALLEL
+#if SD_CARD_ACTIVE
     case 'L':
       showDirectory ();
       break;
-#endif // (not) HIGH_VOLTAGE_PARALLEL
+#endif // SD_CARD_ACTIVE
      
 // --------------------- testing writing --------------------
-#if 0     
+//#if 0     
     case 'T': 
       writeFlashTest (); 
       break; 
-#endif // --------------------- testing writing --------------------
+//#endif // --------------------- testing writing --------------------
       
     default: 
       Serial.println (F("Unknown command.")); 
