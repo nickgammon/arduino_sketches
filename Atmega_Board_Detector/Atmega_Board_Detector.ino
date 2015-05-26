@@ -22,10 +22,27 @@
 
 const char Version [] = "1.16";
 
-// make true to use the high-voltage wiring, false for SPI wiring
-#define HIGH_VOLTAGE_PARALLEL true
+// make true to use the high-voltage parallel wiring
+#define HIGH_VOLTAGE_PARALLEL false
+// make true to use the high-voltage serial wiring
+#define HIGH_VOLTAGE_SERIAL false
+// make true to use ICSP programming
+#define ICSP_PROGRAMMING true
+
+#if HIGH_VOLTAGE_PARALLEL && HIGH_VOLTAGE_SERIAL
+  #error Cannot use both high-voltage parallel and serial at the same time
+#endif 
+
+#if (HIGH_VOLTAGE_PARALLEL || HIGH_VOLTAGE_SERIAL) && ICSP_PROGRAMMING
+  #error Cannot use ICSP and high-voltage programming at the same time
+#endif
+
+#if !(HIGH_VOLTAGE_PARALLEL || HIGH_VOLTAGE_SERIAL || ICSP_PROGRAMMING)
+  #error Choose a programming mode: HIGH_VOLTAGE_PARALLEL, HIGH_VOLTAGE_SERIAL or ICSP_PROGRAMMING 
+#endif
 
 #define USE_BIT_BANGED_SPI false
+
 
 
 /*
