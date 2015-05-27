@@ -126,7 +126,7 @@ void pollUntilReady ()
   }  // end of pollUntilReady
       
 // commit page to flash memory
-void commitPage (unsigned long addr, bool showMessage = false)
+void commitPage (unsigned long addr, bool showMessage)
   {
     
   if (showMessage)

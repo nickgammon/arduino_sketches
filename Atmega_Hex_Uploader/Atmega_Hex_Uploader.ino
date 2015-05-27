@@ -47,19 +47,19 @@ const bool allowTargetToRun = true;  // if true, programming lines are freed whe
 
 #define ALLOW_MODIFY_FUSES true   // make false if this sketch doesn't fit into memory
 #define ALLOW_FILE_SAVING true    // make false if this sketch doesn't fit into memory
-#define SAFETY_CHECKS false        // check for disabling SPIEN, or enabling RSTDISBL
+#define SAFETY_CHECKS true        // check for disabling SPIEN, or enabling RSTDISBL
 
 #define USE_ETHERNET_SHIELD false  // Use the Arduino Ethernet Shield for the SD card
 
 // make true if you have spare pins for the SD card interface
-#define SD_CARD_ACTIVE false
+#define SD_CARD_ACTIVE true
 
 // make true to use the high-voltage parallel wiring
-#define HIGH_VOLTAGE_PARALLEL true
+#define HIGH_VOLTAGE_PARALLEL false
 // make true to use the high-voltage serial wiring
 #define HIGH_VOLTAGE_SERIAL false
 // make true to use ICSP programming
-#define ICSP_PROGRAMMING false
+#define ICSP_PROGRAMMING true
 
 #if HIGH_VOLTAGE_PARALLEL && HIGH_VOLTAGE_SERIAL
   #error Cannot use both high-voltage parallel and serial at the same time
