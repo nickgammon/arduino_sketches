@@ -23,11 +23,11 @@
 const char Version [] = "1.16";
 
 // make true to use the high-voltage parallel wiring
-#define HIGH_VOLTAGE_PARALLEL false
+#define HIGH_VOLTAGE_PARALLEL true
 // make true to use the high-voltage serial wiring
 #define HIGH_VOLTAGE_SERIAL false
 // make true to use ICSP programming
-#define ICSP_PROGRAMMING true
+#define ICSP_PROGRAMMING false
 
 #if HIGH_VOLTAGE_PARALLEL && HIGH_VOLTAGE_SERIAL
   #error Cannot use both high-voltage parallel and serial at the same time
@@ -89,17 +89,8 @@ const int ENTER_PROGRAMMING_ATTEMPTS = 50;
 #endif
 
 #include "HV_Pins.h"
-#include "General_Stuff.h"
-
-
 #include "Signatures.h"
-
-
-// if signature found in above table, this is its index
-int foundSig = -1;
-byte lastAddressMSB = 0;
-// copy of current signature entry for matching processor
-signatureType currentSignature;
+#include "General_Stuff.h"
 
 // for looking up known signatures
 typedef struct {
@@ -196,30 +187,6 @@ void printProgStr (const char * str)
   while ((c = pgm_read_byte(str++)))
     Serial.print (c);
 } // end of printProgStr
-
-
-void showHex (const byte b, const boolean newline = false)
-  {
-  // try to avoid using sprintf
-  char buf [4] = { ((b >> 4) & 0x0F) | '0', (b & 0x0F) | '0', ' ' , 0 };
-  if (buf [0] > '9')
-    buf [0] += 7;
-  if (buf [1] > '9')
-    buf [1] += 7;
-  Serial.print (buf);
-  if (newline)
-    Serial.println ();
-  }  // end of showHex
-
-void showYesNo (const boolean b, const boolean newline = false)
-  {
-  if (b)
-    Serial.print (F("Yes"));
-  else
-    Serial.print (F("No"));
-  if (newline)
-    Serial.println ();
-  }  // end of showYesNo
 
 void readBootloader ()
   {
