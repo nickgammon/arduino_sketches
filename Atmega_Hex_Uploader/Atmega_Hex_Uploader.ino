@@ -47,7 +47,7 @@ const bool allowTargetToRun = true;  // if true, programming lines are freed whe
 
 #define ALLOW_MODIFY_FUSES true   // make false if this sketch doesn't fit into memory
 #define ALLOW_FILE_SAVING true    // make false if this sketch doesn't fit into memory
-#define SAFETY_CHECKS true        // check for disabling SPIEN, or enabling RSTDISBL
+#define SAFETY_CHECKS false        // check for disabling SPIEN, or enabling RSTDISBL
 
 #define USE_ETHERNET_SHIELD false  // Use the Arduino Ethernet Shield for the SD card
 
@@ -55,9 +55,9 @@ const bool allowTargetToRun = true;  // if true, programming lines are freed whe
 #define SD_CARD_ACTIVE false
 
 // make true to use the high-voltage parallel wiring
-#define HIGH_VOLTAGE_PARALLEL false
+#define HIGH_VOLTAGE_PARALLEL true
 // make true to use the high-voltage serial wiring
-#define HIGH_VOLTAGE_SERIAL true
+#define HIGH_VOLTAGE_SERIAL false
 // make true to use ICSP programming
 #define ICSP_PROGRAMMING false
 
@@ -121,6 +121,7 @@ const char Version [] = "1.33";
 const unsigned int ENTER_PROGRAMMING_ATTEMPTS = 50;
 
 #include "HV_Pins.h"
+#include "Signatures.h"
 #include "General_Stuff.h"
 
 #if USE_BIT_BANGED_SPI
@@ -243,7 +244,6 @@ enum {
     writeToFlash,
 };
 
-#include "Signatures.h"
  
 // get a line from serial (file name) 
 //  ignore spaces, tabs etc.
@@ -311,11 +311,6 @@ byte i;
 
 #endif // USE_BIT_BANGED_SPI
 
-// if signature found in above table, this is its index
-int foundSig = -1;
-byte lastAddressMSB = 0;
-// copy of current signature entry for matching processor
-signatureType currentSignature;
 bool haveSDcard;
 
 
@@ -347,21 +342,6 @@ bool hexConv (const char * (& pStr), byte & b)
   
   return false;  // OK
   }  // end of hexConv
-
-// show a byte in hex with leading zero and optional newline
-void showHex (const byte b, const bool newline = false, const bool show0x = true)
-  {
-  if (show0x)
-    Serial.print (F("0x"));
-  char buf [4];
-  sprintf (buf, "%02X ", b);
-  Serial.print (buf);
-  if (newline)
-    Serial.println ();
-  }  // end of showHex 
-  
-  
-  
 
   
 void verifyData (const unsigned long addr, const byte * pData, const int length)
@@ -424,10 +404,6 @@ void getSignature ()
       Serial.print (F("Flash memory size = "));
       Serial.print (currentSignature.flashSize, DEC);
       Serial.println (F(" bytes."));
-      
-#if !HIGH_VOLTAGE_PARALLEL
-#endif
-
       return;
       }  // end of signature found
     }  // end of for each signature

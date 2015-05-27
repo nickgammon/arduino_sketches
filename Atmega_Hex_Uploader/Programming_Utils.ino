@@ -44,3 +44,32 @@ void writeData (const unsigned long addr, const byte * pData, const int length)
 #endif // HIGH_VOLTAGE_PARALLEL    
 
   }  // end of writeData
+  
+ 
+// show a byte in hex with leading zero and optional newline
+void showHex (const byte b, const boolean newline, const boolean show0x)
+  {
+  if (show0x)
+    Serial.print (F("0x"));
+  // try to avoid using sprintf
+  char buf [4] = { ((b >> 4) & 0x0F) | '0', (b & 0x0F) | '0', ' ' , 0 };
+  if (buf [0] > '9')
+    buf [0] += 7;
+  if (buf [1] > '9')
+    buf [1] += 7;
+  Serial.print (buf);
+  if (newline)
+    Serial.println ();
+  }  // end of showHex
+
+
+// convert a boolean to Yes/No
+void showYesNo (const boolean b, const boolean newline)
+  {
+  if (b)
+    Serial.print (F("Yes"));
+  else
+    Serial.print (F("No"));
+  if (newline)
+    Serial.println ();
+  }  // end of showYesNo

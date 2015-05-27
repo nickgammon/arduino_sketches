@@ -126,8 +126,17 @@ void pollUntilReady ()
   }  // end of pollUntilReady
       
 // commit page to flash memory
-void commitPage (unsigned long addr)
+void commitPage (unsigned long addr, bool showMessage = false)
   {
+    
+  if (showMessage)
+    {
+    Serial.print (F("Committing page starting at 0x"));
+    Serial.println (addr, HEX);
+    }
+  else
+    showProgress ();
+
   addr >>= 1;  // turn into word address
   
   // set the extended (most significant) address byte if necessary
@@ -138,8 +147,6 @@ void commitPage (unsigned long addr)
     lastAddressMSB = MSB;
     }  // end if different MSB
     
-  showProgress ();
-  
   program (writeProgramMemory, highByte (addr), lowByte (addr));
   pollUntilReady (); 
   
@@ -168,7 +175,7 @@ void writeFuse (const byte newValue, const byte whichFuse)
 bool startProgramming ()
   {
     
-  Serial.print (F("Attempting to enter programming mode ..."));
+  Serial.print (F("Attempting to enter ICSP programming mode ..."));
     
   byte confirm;
   pinMode (RESET, OUTPUT);

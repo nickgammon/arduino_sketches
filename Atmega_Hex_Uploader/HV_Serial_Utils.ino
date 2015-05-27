@@ -160,10 +160,17 @@ void pollUntilReady ()
   }  // end of pollUntilReady
 
 // commit page to flash memory
-void commitPage (unsigned long addr)
+void commitPage (unsigned long addr, bool showMessage)
   {
+  if (showMessage)
+    {
+    Serial.print (F("Committing page starting at 0x"));
+    Serial.println (addr, HEX);
+    }
+  else
+    showProgress ();
+
   addr >>= 1;  // turn into word address
-  showProgress ();
   
   HVtransfer (SII_LOAD_ADDRESS_HIGH, addr >> 8);
   HVtransfer (SII_WRITE_LOW_BYTE, 0);
@@ -232,7 +239,7 @@ void writeFuse (const byte newValue, const byte whichFuse)
 // put chip into programming mode    
 bool startProgramming ()
   {
-  Serial.println (F("Activating high-voltage serial programming mode."));
+  Serial.println (F("Activating high-voltage SERIAL programming mode."));
   pinMode (SDI, OUTPUT);
   pinMode (SII, OUTPUT);
   pinMode (SDO, OUTPUT);

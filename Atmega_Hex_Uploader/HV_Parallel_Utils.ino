@@ -154,10 +154,17 @@ void pollUntilReady ()
   }  // end of pollUntilReady
 
 // commit page to flash memory
-void commitPage (unsigned long addr)
+void commitPage (unsigned long addr, bool showMessage)
   {
+  if (showMessage)
+    {
+    Serial.print (F("Committing page starting at 0x"));
+    Serial.println (addr, HEX);
+    }
+  else
+    showProgress ();
+  
   addr >>= 1;  // turn into word address
-  showProgress ();
   HVprogram (ACTION_LOAD_ADDRESS, addr >> 8, HIGH);
   HVprogram (ACTION_LOAD_ADDRESS, addr, LOW);
   digitalWrite (WR, LOW);
@@ -193,10 +200,20 @@ void writeFuse (const byte newValue, const byte whichFuse)
   // latch in the new value
   switch (whichFuse)
     {
-    case lowFuse:    HVprogram (ACTION_LOAD_DATA, newValue, LOW,  LOW);  break; 
-    case highFuse:   HVprogram (ACTION_LOAD_DATA, newValue, HIGH, LOW);  break; 
-    case extFuse:    HVprogram (ACTION_LOAD_DATA, newValue, LOW,  HIGH); break; 
-    case lockByte:   HVprogram (ACTION_LOAD_DATA, newValue, LOW,  LOW);  break; 
+    case lowFuse:    
+      HVprogram (ACTION_LOAD_DATA, newValue);  
+      break; 
+    case highFuse:   
+      HVprogram (ACTION_LOAD_DATA, newValue);  
+      digitalWrite (BS1, HIGH);    // do this AFTER programming the data
+      break; 
+    case extFuse:    
+      HVprogram (ACTION_LOAD_DATA, newValue); 
+      digitalWrite (BS2, HIGH);    // do this AFTER programming the data
+      break; 
+    case lockByte:   
+      HVprogram (ACTION_LOAD_DATA, newValue, LOW,  LOW);  
+      break; 
     default: return;
     }  // end of switch
     
@@ -209,7 +226,7 @@ void writeFuse (const byte newValue, const byte whichFuse)
 // put chip into programming mode    
 bool startProgramming ()
   {
-  Serial.println (F("Activating high-voltage programming mode."));
+  Serial.println (F("Activating high-voltage PARALLEL programming mode."));
 
   digitalWrite (PAGEL, LOW);
   digitalWrite (XA1, LOW);
