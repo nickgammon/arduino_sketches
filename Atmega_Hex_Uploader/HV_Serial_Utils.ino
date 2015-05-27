@@ -43,17 +43,8 @@ byte HVtransfer (byte instruction, byte data)
   return result;
   }  // end of HVtransfer
 
-// Read a byte of data by setting the data pins to input, enabling output 
-// (output from the target, input to the programmer), reading the 8 bits
-// disabling output, and then putting the pins back as outputs.
-// BS1 and BS2 modify what data is read (eg. high byte or low byte)
-
-byte HVreadData (const byte bs1 = LOW, const byte bs2 = LOW)
-  {
-  byte result = 0;
-  return result;
-  }  // end of HVreadData
- 
+// Read a byte from flash by setting up the low and high byte of the address, then
+// reading the entire word. We return which byte was wanted (low or high).
 byte readFlash (unsigned long addr)
   {
   byte high = addr & 1;  // set if high byte wanted
@@ -104,7 +95,7 @@ void writeFlash (unsigned long addr, const byte data)
   
   } // end of writeFlash  
 
-  
+// read a fuse byte
 byte readFuse (const byte which)
   {
   
@@ -134,7 +125,8 @@ byte readFuse (const byte which)
   return HVtransfer (operation | SII_OR_MASK, 0);
 
   }  // end of readFuse
-  
+
+// read all 3 signature bytes  
 void readSignature (byte sig [3])
   {
   HVtransfer (SII_LOAD_COMMAND, CMD_READ_SIGNATURE);
@@ -182,6 +174,7 @@ void commitPage (unsigned long addr, bool showMessage)
   
   }  // end of commitPage
 
+// erase all memory (also resets the lock bits)
 void eraseMemory ()
   {
   HVtransfer (SII_LOAD_COMMAND, CMD_CHIP_ERASE);
@@ -256,6 +249,7 @@ bool startProgramming ()
   return true;
  }  // end of  startProgramming
   
+// turn off programming mode
 void stopProgramming ()
   {
   digitalWrite (VCC, LOW);
