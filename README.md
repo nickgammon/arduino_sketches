@@ -304,7 +304,7 @@ See the source code (and above forum post) for details about the meanings of the
 High-voltage serial and parallel programming
 ---------------------------------------
 
-As from 27^th^ May 2015 the sketches Atmega\_Hex\_Uploader, Atmega\_Board\_Detector and Atmega\_Board\_Programmer also optionally support the high-voltage programming mode of various chips.
+As from 27th May 2015 the sketches Atmega\_Hex\_Uploader, Atmega\_Board\_Detector and Atmega\_Board\_Programmer also optionally support the high-voltage programming mode of various chips.
 
 This is documented in some detail at http://www.gammon.com.au/forum/?id=12898
 
@@ -339,6 +339,7 @@ Arduino    Target chip
 ```
 
 ###Reset circuitry###
+
 
 ![Reset circuit](http://www.gammon.com.au/images/Arduino/HV_Programmer3.png)
 
