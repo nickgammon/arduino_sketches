@@ -51,9 +51,28 @@
 // Version 1.31: Fixed bug in doing second lot of programming under IDE 1.6.0
 // Version 1.32: Bug fixes, added support for At90USB82, At90USB162 signatures
 // Version 1.33: Added support for ATMEGA256RFR2 (Pinoccio Scout)
+// Version 1.34: Added support for high-voltage programming mode for Atmega328 / ATtiny25 family
 
-#define VERSION "1.33"
+#define VERSION "1.34"
 
+// make true to use the high-voltage parallel wiring
+#define HIGH_VOLTAGE_PARALLEL true
+// make true to use the high-voltage serial wiring
+#define HIGH_VOLTAGE_SERIAL false
+// make true to use ICSP programming
+#define ICSP_PROGRAMMING false
+
+#if HIGH_VOLTAGE_PARALLEL && HIGH_VOLTAGE_SERIAL
+  #error Cannot use both high-voltage parallel and serial at the same time
+#endif 
+
+#if (HIGH_VOLTAGE_PARALLEL || HIGH_VOLTAGE_SERIAL) && ICSP_PROGRAMMING
+  #error Cannot use ICSP and high-voltage programming at the same time
+#endif
+
+#if !(HIGH_VOLTAGE_PARALLEL || HIGH_VOLTAGE_SERIAL || ICSP_PROGRAMMING)
+  #error Choose a programming mode: HIGH_VOLTAGE_PARALLEL, HIGH_VOLTAGE_SERIAL or ICSP_PROGRAMMING 
+#endif
 
 const int ENTER_PROGRAMMING_ATTEMPTS = 50;
 
@@ -88,71 +107,40 @@ const int ENTER_PROGRAMMING_ATTEMPTS = 50;
 #include <SPI.h>
 #include <avr/pgmspace.h>
 
+
 const unsigned long BAUD_RATE = 115200;
 
 const byte CLOCKOUT = 9;
-#ifdef ARDUINO_PINOCCIO
-  const byte RESET = SS;  // --> goes to reset on the target board
-#else
-  const byte RESET = 10;  // --> goes to reset on the target board
-#endif
 
-#if ARDUINO < 100
-  const byte SCK = 13;    // SPI clock
-#endif
+#if ICSP_PROGRAMMING
 
-// stringification for Arduino IDE version
-#define xstr(s) str(s)
-#define str(s) #s
+  #ifdef ARDUINO_PINOCCIO
+    const byte RESET = SS;  // --> goes to reset on the target board
+  #else
+    const byte RESET = 10;  // --> goes to reset on the target board
+  #endif
+  
+  #if ARDUINO < 100
+    const byte SCK = 13;    // SPI clock
+  #endif
 
-// number of items in an array
-#define NUMITEMS(arg) ((unsigned int) (sizeof (arg) / sizeof (arg [0])))
+#endif // ICSP_PROGRAMMING
 
-// programming commands to send via SPI to the chip
-enum {
-    progamEnable = 0xAC,
 
-      // writes are preceded by progamEnable
-      chipErase = 0x80,
-      writeLockByte = 0xE0,
-      writeLowFuseByte = 0xA0,
-      writeHighFuseByte = 0xA8,
-      writeExtendedFuseByte = 0xA4,
+#include "HV_Pins.h"
+#include "Signatures.h"
+#include "General_Stuff.h"
 
-    pollReady = 0xF0,
 
-    programAcknowledge = 0x53,
-
-    readSignatureByte = 0x30,
-    readCalibrationByte = 0x38,
-
-    readLowFuseByte = 0x50,       readLowFuseByteArg2 = 0x00,
-    readExtendedFuseByte = 0x50,  readExtendedFuseByteArg2 = 0x08,
-    readHighFuseByte = 0x58,      readHighFuseByteArg2 = 0x08,
-    readLockByte = 0x58,          readLockByteArg2 = 0x00,
-
-    readProgramMemory = 0x20,
-    writeProgramMemory = 0x4C,
-    loadExtendedAddressByte = 0x4D,
-    loadProgramMemory = 0x40,
-
-};  // end of enum
-
-// structure to hold signature and other relevant data about each chip
+// structure to hold signature and other relevant data about each bootloader
 typedef struct {
-   byte sig [3];
-   char * desc;
-   unsigned long flashSize;
-   unsigned int baseBootSize;
-   const byte * bootloader;
-   unsigned long loaderStart;  // bytes
-   unsigned int loaderLength;  // bytes
-   unsigned long pageSize;     // bytes
-   byte lowFuse, highFuse, extFuse, lockByte;
-   byte timedWrites;    // if pollUntilReady won't work by polling the chip
-} signatureType;
+   byte sig [3];                // chip signature
+   unsigned long loaderStart;   // start address of bootloader (bytes)
+   const byte * bootloader;     // address of bootloader hex data
+   unsigned int loaderLength;   // length of bootloader hex data (bytes)
+   byte lowFuse, highFuse, extFuse, lockByte;  // what to set the fuses, lock bits to.
+} bootloaderType;
 
-const unsigned long kb = 1024;
 
 // hex bootloader data
 
@@ -186,380 +174,222 @@ const unsigned long kb = 1024;
 #endif
 
 // see Atmega328 datasheet page 298
-signatureType signatures [] =
+const bootloaderType bootloaders [] PROGMEM =
   {
-//     signature          description   flash size  bootloader size
+// Only known bootloaders are in this array.
+// If we support it at all, it will have a start address.
+// If not compiled into this particular version the bootloader address will be zero.
 
-  // Attiny84 family
-  { { 0x1E, 0x91, 0x0B }, "ATtiny24",   2 * kb,         0 },
-  { { 0x1E, 0x92, 0x07 }, "ATtiny44",   4 * kb,         0 },
-  { { 0x1E, 0x93, 0x0C }, "ATtiny84",   8 * kb,         0 },
-
-  // Attiny85 family
-  { { 0x1E, 0x91, 0x08 }, "ATtiny25",   2 * kb,         0 },
-  { { 0x1E, 0x92, 0x06 }, "ATtiny45",   4 * kb,         0 },
-  { { 0x1E, 0x93, 0x0B }, "ATtiny85",   8 * kb,         0 },
-
-  // Atmega328 family
-  { { 0x1E, 0x92, 0x0A }, "ATmega48PA",   4 * kb,         0 },
-  { { 0x1E, 0x93, 0x0F }, "ATmega88PA",   8 * kb,       256 },
-  { { 0x1E, 0x94, 0x0B }, "ATmega168PA", 16 * kb,       256,
-  #if USE_ATMEGA168
-        atmega168_optiboot,   // loader image
-  #else
-        0,
-  #endif
+  // ATmega168PA
+  { { 0x1E, 0x94, 0x0B }, 
         0x3E00,               // start address
   #if USE_ATMEGA168
+        atmega168_optiboot,   // loader image
         sizeof atmega168_optiboot,
   #else
-        0,
+        0, 0,
   #endif
-        128,          // page size in bytes (for committing)
         0xC6,         // fuse low byte: external full-swing crystal
         0xDD,         // fuse high byte: SPI enable, brown-out detection at 2.7V
         0x04,         // fuse extended byte: boot into bootloader, 512 byte bootloader
         0x2F },       // lock bits: SPM is not allowed to write to the Boot Loader section.
 
-  { { 0x1E, 0x95, 0x0F }, "ATmega328P",  32 * kb,       512,
-        atmega328_optiboot,   // loader image
+  // ATmega328P
+  { { 0x1E, 0x95, 0x0F }, 
         0x7E00,               // start address
+        atmega328_optiboot,   // loader image
         sizeof atmega328_optiboot,
-        128,          // page size in bytes (for committing)
         0xFF,         // fuse low byte: external clock, max start-up time
         0xDE,         // fuse high byte: SPI enable, boot into bootloader, 512 byte bootloader
         0x05,         // fuse extended byte: brown-out detection at 2.7V
         0x2F },       // lock bits: SPM is not allowed to write to the Boot Loader section.
 
-  { { 0x1E, 0x95, 0x14 }, "ATmega328",  32 * kb,       512,
-        atmega328_optiboot,   // loader image
+  // ATmega328
+  { { 0x1E, 0x95, 0x14 }, 
         0x7E00,               // start address
+        atmega328_optiboot,   // loader image
         sizeof atmega328_optiboot,
-        128,          // page size in bytes (for committing)
         0xFF,         // fuse low byte: external clock, max start-up time
         0xDE,         // fuse high byte: SPI enable, boot into bootloader, 512 byte bootloader
         0x05,         // fuse extended byte: brown-out detection at 2.7V
         0x2F },       // lock bits: SPM is not allowed to write to the Boot Loader section.
 
-  // Atmega644 family
-  { { 0x1E, 0x94, 0x0A }, "ATmega164P",   16 * kb,      256 },
-  { { 0x1E, 0x95, 0x08 }, "ATmega324P",   32 * kb,      512 },
-  { { 0x1E, 0x96, 0x0A }, "ATmega644P",   64 * kb,   1 * kb },
-
-  // Atmega2560 family
-  { { 0x1E, 0x96, 0x08 }, "ATmega640",    64 * kb,   1 * kb },
-  { { 0x1E, 0x97, 0x03 }, "ATmega1280",  128 * kb,   1 * kb,
-  #if USE_ATMEGA1280
-        optiboot_atmega1280_hex,
-  #else
-        0,
-  #endif
+  // ATmega1280
+  { { 0x1E, 0x97, 0x03 }, 
         0x1FC00,      // start address
   #if USE_ATMEGA1280
+        optiboot_atmega1280_hex,
         sizeof optiboot_atmega1280_hex,
   #else
-        0,
+        0, 0,
   #endif
-        256,          // page size in bytes (for committing)
         0xFF,         // fuse low byte: external clock, max start-up time
         0xDE,         // fuse high byte: SPI enable, boot into bootloader, 1280 byte bootloader
         0xF5,         // fuse extended byte: brown-out detection at 2.7V
         0x2F },       // lock bits: SPM is not allowed to write to the Boot Loader section.
 
-  { { 0x1E, 0x97, 0x04 }, "ATmega1281",  128 * kb,   1 * kb },
-  { { 0x1E, 0x98, 0x01 }, "ATmega2560",  256 * kb,   1 * kb,
-  #if USE_ATMEGA2560
-        atmega2560_bootloader_hex,// loader image
-  #else
-        0,
-  #endif
+  // ATmega2560
+  { { 0x1E, 0x98, 0x01 }, 
         0x3E000,      // start address
   #if USE_ATMEGA2560
+        atmega2560_bootloader_hex,// loader image
         sizeof atmega2560_bootloader_hex,
   #else
-        0,
+        0, 0,
   #endif
-        256,          // page size in bytes (for committing)
         0xFF,         // fuse low byte: external clock, max start-up time
         0xD8,         // fuse high byte: SPI enable, boot into bootloader, 8192 byte bootloader
         0xFD,         // fuse extended byte: brown-out detection at 2.7V
         0x2F },       // lock bits: SPM is not allowed to write to the Boot Loader section.
 
-  { { 0x1E, 0x98, 0x02 }, "ATmega2561",  256 * kb,   1 * kb },
-
-  // rfr2 family
-  { { 0x1E, 0xA6, 0x02 }, "ATmega64rfr2",  256 * kb, 1 * kb },
-  { { 0x1E, 0xA7, 0x02 }, "ATmega128rfr2", 256 * kb, 1 * kb },
-  { { 0x1E, 0xA8, 0x02 }, "ATmega256rfr2", 256 * kb, 1 * kb,
-  #if USE_ATMEGA256RFR2
-        atmega256rfr2_bootloader_hex,// loader image
-  #else
-        0,
-  #endif
+  // ATmega256rfr2
+  { { 0x1E, 0xA8, 0x02 },
         0x3E000,      // start address
   #if USE_ATMEGA256RFR2
+        atmega256rfr2_bootloader_hex,// loader image
         sizeof atmega256rfr2_bootloader_hex,
   #else
-        0,
+        0, 0,
   #endif
-        256,          // page size in bytes (for committing)
         0xDE,         // fuse low byte: internal transceiver clock, max start-up time
         0xD0,         // fuse high byte: SPI enable, EE save, boot into bootloader, 8192 byte bootloader
         0xFE,         // fuse extended byte: brown-out detection at 1.8V
         0x2F },       // lock bits: SPM is not allowed to write to the Boot Loader section.
 
-  // AT90USB family
-  { { 0x1E, 0x93, 0x82 }, "At90USB82",    8 * kb,   512 },
-  { { 0x1E, 0x94, 0x82 }, "At90USB162",  16 * kb,   512 },
-
-  // Atmega32U2 family
-  { { 0x1E, 0x93, 0x89 }, "ATmega8U2",    8 * kb,   512 },
-  { { 0x1E, 0x94, 0x89 }, "ATmega16U2",  16 * kb,   512,
-  #if USE_ATMEGA16U2
-        Arduino_COMBINED_dfu_usbserial_atmega16u2_Uno_Rev3_hex,// loader image
-  #else
-        0,
-  #endif
+  // ATmega16U2
+  { { 0x1E, 0x94, 0x89 }, 
         0x3000,      // start address
   #if USE_ATMEGA16U2
+        Arduino_COMBINED_dfu_usbserial_atmega16u2_Uno_Rev3_hex,// loader image
         sizeof Arduino_COMBINED_dfu_usbserial_atmega16u2_Uno_Rev3_hex,
   #else
-        0,
+        0, 0,
   #endif
-        128,          // page size in bytes (for committing)
         0xEF,         // fuse low byte: external clock, m
         0xD9,         // fuse high byte: SPI enable, NOT boot into bootloader, 4096 byte bootloader
         0xF4,         // fuse extended byte: brown-out detection at 2.6V
         0xCF },       // lock bits
 
-  { { 0x1E, 0x95, 0x8A }, "ATmega32U2",  32 * kb,   512 },
-
-  // Atmega32U4 family
-  { { 0x1E, 0x94, 0x88 }, "ATmega16U4",  16 * kb,   512 },
-  { { 0x1E, 0x95, 0x87 }, "ATmega32U4",  32 * kb,   4 * kb,
-  #if USE_ATMEGA32U4
-        leonardo_hex,// loader image
-  #else
-        0,
-  #endif
+  // ATmega32U4
+  { { 0x1E, 0x95, 0x87 }, 
         0x7000,      // start address
   #if USE_ATMEGA32U4
+        leonardo_hex,// loader image
         sizeof leonardo_hex,
   #else
-        0,
+        0, 0,
   #endif
-        128,          // page size in bytes (for committing) (datasheet is wrong about it being 128 words)
         0xFF,         // fuse low byte: external clock, max start-up time
         0xD8,         // fuse high byte: SPI enable, boot into bootloader, 1280 byte bootloader
         0xCB,         // fuse extended byte: brown-out detection at 2.6V
         0x2F },       // lock bits: SPM is not allowed to write to the Boot Loader section.
 
   // ATmega1284P family
-  { { 0x1E, 0x97, 0x05 }, "ATmega1284P", 128 * kb,   1 * kb,
-  #if USE_ATMEGA1284
-        optiboot_atmega1284p_hex,
-  #else
-        0,
-  #endif
+  
+  // ATmega1284P
+  { { 0x1E, 0x97, 0x05 }, 
         0x1FC00,      // start address
   #if USE_ATMEGA1284
+        optiboot_atmega1284p_hex,
         sizeof optiboot_atmega1284p_hex,
   #else
-        0,
+        0, 0,
   #endif
-        256,          // page size in bytes (for committing)
         0xFF,         // fuse low byte: external clock, max start-up time
         0xDE,         // fuse high byte: SPI enable, boot into bootloader, 1024 byte bootloader
         0xFD,         // fuse extended byte: brown-out detection at 2.7V
         0x2F },       // lock bits: SPM is not allowed to write to the Boot Loader section.
 
-  // ATtiny4313 family
-  { { 0x1E, 0x91, 0x0A }, "ATtiny2313A", 2 * kb,   0 },
-  { { 0x1E, 0x92, 0x0D }, "ATtiny4313",  4 * kb,   0 },
-
-  // ATtiny13 family
-  { { 0x1E, 0x90, 0x07 }, "ATtiny13A",     1 * kb, 0 },
-
   // Atmega8A family
-  { { 0x1E, 0x93, 0x07 }, "ATmega8A",     8 * kb, 256,
-  #if USE_ATMEGA8
-        atmega8_hex,
-  #else
-        0,
-  #endif
+  
+  // ATmega8A
+  { { 0x1E, 0x93, 0x07 }, 
         0x1C00,      // start address
   #if USE_ATMEGA8
+        atmega8_hex,
         sizeof atmega8_hex,
   #else
-        0,
+        0, 0,
   #endif
-        64,           // page size in bytes (for committing)
         0xE4,         // fuse low byte: external clock, max start-up time
         0xCA,         // fuse high byte: SPI enable, boot into bootloader, 1024 byte bootloader
         0xFD,         // fuse extended byte: brown-out detection at 2.7V
-        0x0F,         // lock bits: SPM is not allowed to write to the Boot Loader section.
-        true },       // need to do timed writes, not polled ones
+        0x0F  },      // lock bits: SPM is not allowed to write to the Boot Loader section.
 
-  };  // end of signatures
+  };  // end of bootloaders
 
-// if signature found in above table, this is its index
-int foundSig = -1;
-byte lastAddressMSB = 0;
 
-// execute one programming instruction ... b1 is command, b2, b3, b4 are arguments
-//  processor may return a result on the 4th transfer, this is returned.
-byte program (const byte b1, const byte b2 = 0, const byte b3 = 0, const byte b4 = 0)
-  {
-  SPI.transfer (b1);
-  SPI.transfer (b2);
-  SPI.transfer (b3);
-  return SPI.transfer (b4);
-  } // end of program
-
-// read a byte from flash memory
-byte readFlash (unsigned long addr)
-  {
-  byte high = (addr & 1) ? 0x08 : 0;  // set if high byte wanted
-  addr >>= 1;  // turn into word address
-
-  // set the extended (most significant) address byte if necessary
-  byte MSB = (addr >> 16) & 0xFF;
-  if (MSB != lastAddressMSB)
-    {
-    program (loadExtendedAddressByte, 0, MSB);
-    lastAddressMSB = MSB;
-    }  // end if different MSB
-
-  return program (readProgramMemory | high, highByte (addr), lowByte (addr));
-  } // end of readFlash
-
-// write a byte to the flash memory buffer (ready for committing)
-byte writeFlash (unsigned long addr, const byte data)
-  {
-  byte high = (addr & 1) ? 0x08 : 0;  // set if high byte wanted
-  addr >>= 1;  // turn into word address
-  program (loadProgramMemory | high, 0, lowByte (addr), data);
-  } // end of writeFlash
-
-// show a byte in hex with leading zero and optional newline
-void showHex (const byte b, const boolean newline = false, const boolean show0x = true)
-  {
-  if (show0x)
-    Serial.print (F("0x"));
-  // try to avoid using sprintf
-  char buf [4] = { ((b >> 4) & 0x0F) | '0', (b & 0x0F) | '0', ' ' , 0 };
-  if (buf [0] > '9')
-    buf [0] += 7;
-  if (buf [1] > '9')
-    buf [1] += 7;
-  Serial.print (buf);
-  if (newline)
-    Serial.println ();
-  }  // end of showHex
-
-// convert a boolean to Yes/No
-void showYesNo (const boolean b, const boolean newline = false)
-  {
-  if (b)
-    Serial.print (F("Yes"));
-  else
-    Serial.print (F("No"));
-  if (newline)
-    Serial.println ();
-  }  // end of showYesNo
-
-// poll the target device until it is ready to be programmed
-void pollUntilReady ()
-  {
-  if (signatures [foundSig].timedWrites)
-    delay (10);  // at least 2 x WD_FLASH which is 4.5 mS
-  else
-    {
-    while ((program (pollReady) & 1) == 1)
-      {}  // wait till ready
-    }  // end of if
-  }  // end of pollUntilReady
-
-// commit page
-void commitPage (unsigned long addr)
-  {
-  Serial.print (F("Committing page starting at 0x"));
-  Serial.println (addr, HEX);
-
-  addr >>= 1;  // turn into word address
-
-  // set the extended (most significant) address byte if necessary
-  byte MSB = (addr >> 16) & 0xFF;
-  if (MSB != lastAddressMSB)
-    {
-    program (loadExtendedAddressByte, 0, MSB);
-    lastAddressMSB = MSB;
-    }  // end if different MSB
-
-  program (writeProgramMemory, highByte (addr), lowByte (addr));
-  pollUntilReady ();
-  }  // end of commitPage
-
-// write specified value to specified fuse/lock byte
-void writeFuse (const byte newValue, const byte instruction)
-  {
-  if (newValue == 0)
-    return;  // ignore
-
-  program (progamEnable, instruction, 0, newValue);
-  pollUntilReady ();
-  }  // end of writeFuse
 
 void getFuseBytes ()
   {
   Serial.print (F("LFuse = "));
-  showHex (program (readLowFuseByte, readLowFuseByteArg2), true);
+  showHex (readFuse (lowFuse), true);
   Serial.print (F("HFuse = "));
-  showHex (program (readHighFuseByte, readHighFuseByteArg2), true);
+  showHex (readFuse (highFuse), true);
   Serial.print (F("EFuse = "));
-  showHex (program (readExtendedFuseByte, readExtendedFuseByteArg2), true);
+  showHex (readFuse (extFuse), true);
   Serial.print (F("Lock byte = "));
-  showHex (program (readLockByte, readLockByteArg2), true);
+  showHex (readFuse (lockByte), true);
   Serial.print (F("Clock calibration = "));
-  showHex (program (readCalibrationByte), true);
+  showHex (readFuse (calibrationByte), true);
   }  // end of getFuseBytes
+
+bootloaderType currentBootloader;
+
 
 // burn the bootloader to the target device
 void writeBootloader ()
   {
-
-  if (signatures [foundSig].bootloader == 0)
+  bool foundBootloader = false;
+  
+  for (int j = 0; j < NUMITEMS (bootloaders); j++)
     {
-    if (signatures [foundSig].loaderStart != 0)
-      Serial.println (F("Bootloader for this device is disabled, edit " __FILE__ " to enable it."));
-    else
-      Serial.println (F("No bootloader support for this device."));
+      
+    memcpy_P (&currentBootloader, &bootloaders [j], sizeof currentBootloader);
+    
+    if (memcmp (currentSignature.sig, currentBootloader.sig, sizeof currentSignature.sig) == 0)
+      {
+      foundBootloader = true;
+      break;
+      }  // end of signature found
+    }  // end of for each signature
+    
+  if (!foundBootloader)
+    {
+    Serial.println (F("No bootloader support for this device."));
     return;
-    }  // end if
+    }
+    
+  // if in the table, but with zero length, we need to enable a #define to use it.
+  if (currentBootloader.loaderLength == 0)
+    {
+    Serial.println (F("Bootloader for this device is disabled, edit " __FILE__ " to enable it."));
+    return;
+    }
 
   int i;
 
-  byte lFuse = program (readLowFuseByte, readLowFuseByteArg2);
+  byte lFuse = readFuse (lowFuse);
 
-  byte newlFuse = signatures [foundSig].lowFuse;
-  byte newhFuse = signatures [foundSig].highFuse;
-  byte newextFuse = signatures [foundSig].extFuse;
-  byte newlockByte = signatures [foundSig].lockByte;
+  byte newlFuse = currentBootloader.lowFuse;
+  byte newhFuse = currentBootloader.highFuse;
+  byte newextFuse = currentBootloader.extFuse;
+  byte newlockByte = currentBootloader.lockByte;
 
 
-  unsigned long addr = signatures [foundSig].loaderStart;
-  unsigned int  len = signatures [foundSig].loaderLength;
-  unsigned long pagesize = signatures [foundSig].pageSize;
+  unsigned long addr = currentBootloader.loaderStart;
+  unsigned int  len = currentBootloader.loaderLength;
+  unsigned long pagesize = currentSignature.pageSize;
   unsigned long pagemask = ~(pagesize - 1);
-  const byte * bootloader = signatures [foundSig].bootloader;
+  const byte * bootloader = currentBootloader.bootloader;
 
 
   byte subcommand = 'U';
 
   // Atmega328P or Atmega328
-  if (signatures [foundSig].sig [0] == 0x1E &&
-      signatures [foundSig].sig [1] == 0x95 &&
-      (signatures [foundSig].sig [2] == 0x0F || signatures [foundSig].sig [2] == 0x14)
+  if (currentBootloader.sig [0] == 0x1E &&
+      currentBootloader.sig [1] == 0x95 &&
+      (currentBootloader.sig [2] == 0x0F || currentBootloader.sig [2] == 0x14)
       )
     {
     Serial.println (F("Type 'L' to use Lilypad (8 MHz) loader, or 'U' for Uno (16 MHz) loader ..."));
@@ -612,18 +442,16 @@ void writeBootloader ()
         Serial.println (F("Clearing 'Divide clock by 8' fuse bit."));
 
       Serial.println (F("Fixing low fuse setting ..."));
-      writeFuse (newlFuse, writeLowFuseByte);
+      writeFuse (newlFuse, lowFuse);
       delay (1000);
-      digitalWrite (RESET, HIGH); // latch fuse
+      stopProgramming ();  // latch fuse
       if (!startProgramming ())
         return;
       delay (1000);
       }
 
     Serial.println (F("Erasing chip ..."));
-    program (progamEnable, chipErase);   // erase it
-    delay (20);  // for Atmega8
-    pollUntilReady ();
+    eraseMemory ();
     Serial.println (F("Writing bootloader ..."));
     for (i = 0; i < len; i += 2)
       {
@@ -631,7 +459,7 @@ void writeBootloader ()
       // page changed? commit old one
       if (thisPage != oldPage)
         {
-        commitPage (oldPage);
+        commitPage (oldPage, true);
         oldPage = thisPage;
         }
       writeFlash (addr + i, pgm_read_byte(bootloader + i));
@@ -639,7 +467,7 @@ void writeBootloader ()
       }  // end while doing each word
 
     // commit final page
-    commitPage (oldPage);
+    commitPage (oldPage, true);
     Serial.println (F("Written."));
     }  // end if programming
 
@@ -682,10 +510,10 @@ void writeBootloader ()
     {
     Serial.println (F("Writing fuses ..."));
 
-    writeFuse (newlFuse, writeLowFuseByte);
-    writeFuse (newhFuse, writeHighFuseByte);
-    writeFuse (newextFuse, writeExtendedFuseByte);
-    writeFuse (newlockByte, writeLockByte);
+    writeFuse (newlFuse, lowFuse);
+    writeFuse (newhFuse, highFuse);
+    writeFuse (newextFuse, extFuse);
+    writeFuse (newlockByte, lockByte);
 
     // confirm them
     getFuseBytes ();
@@ -695,97 +523,32 @@ void writeBootloader ()
 
   } // end of writeBootloader
 
-
-bool startProgramming ()
-  {
-  Serial.print (F("Attempting to enter programming mode ..."));
-  digitalWrite (RESET, HIGH);  // ensure SS stays high for now
-  SPI.begin ();
-  SPI.setClockDivider (SPI_CLOCK_DIV64);
-
-  byte confirm;
-  pinMode (RESET, OUTPUT);
-  pinMode (SCK, OUTPUT);
-  unsigned int timeout = 0;
-
-  // we are in sync if we get back programAcknowledge on the third byte
-  do
-    {
-    delay (100);
-    // ensure SCK low
-    digitalWrite (SCK, LOW);
-    // then pulse reset, see page 309 of datasheet
-    digitalWrite (RESET, HIGH);
-    delay (1);  // pulse for at least 2 clock cycles
-    digitalWrite (RESET, LOW);
-    delay (25);  // wait at least 20 mS
-    SPI.transfer (progamEnable);
-    SPI.transfer (programAcknowledge);
-    confirm = SPI.transfer (0);
-    SPI.transfer (0);
-    
-    if (confirm != programAcknowledge)
-      {
-      Serial.print (F("."));
-      if (timeout++ >= ENTER_PROGRAMMING_ATTEMPTS)
-        {
-        Serial.println ();
-        Serial.println (F("Failed to enter programming mode. Double-check wiring!"));
-        stopProgramming ();
-        return false;
-        }  // end of too many attempts
-      }  // end of not entered programming mode
-    } while (confirm != programAcknowledge);
-
-  Serial.println ();
-  Serial.println (F("Entered programming mode OK."));
-  return true;
-  }  // end of startProgramming
-
-void stopProgramming ()
-  {
-  SPI.end ();
-
-  // turn off pull-ups, if any
-  digitalWrite (RESET, LOW);
-  digitalWrite (SCK,   LOW);
-  digitalWrite (MOSI,  LOW);
-  digitalWrite (MISO,  LOW);
-
-  // set everything back to inputs
-  pinMode (RESET, INPUT);
-  pinMode (SCK,   INPUT);
-  pinMode (MOSI,  INPUT);
-  pinMode (MISO,  INPUT);
-
-  Serial.println (F("Programming mode off."));
-  } // end of stopProgramming
-
 void getSignature ()
   {
   foundSig = -1;
-  lastAddressMSB = 0;
 
   byte sig [3];
   Serial.print (F("Signature = "));
+  readSignature (sig);
   for (byte i = 0; i < 3; i++)
-    {
-    sig [i] = program (readSignatureByte, 0, i);
     showHex (sig [i]);
-    }  // end for each signature byte
+  
   Serial.println ();
 
   for (int j = 0; j < NUMITEMS (signatures); j++)
     {
-    if (memcmp (sig, signatures [j].sig, sizeof sig) == 0)
+      
+    memcpy_P (&currentSignature, &signatures [j], sizeof currentSignature);
+    
+    if (memcmp (sig, currentSignature.sig, sizeof sig) == 0)
       {
       foundSig = j;
       Serial.print (F("Processor = "));
-      Serial.println (signatures [j].desc);
+      Serial.println (currentSignature.desc);
       Serial.print (F("Flash memory size = "));
-      Serial.print (signatures [j].flashSize, DEC);
+      Serial.print (currentSignature.flashSize, DEC);
       Serial.println (F(" bytes."));
-      if (signatures [foundSig].timedWrites)
+      if (currentSignature.timedWrites)
         Serial.println (F("Writes are timed, not polled."));
       return;
       }  // end of signature found
@@ -804,13 +567,7 @@ void setup ()
   Serial.println (F("Version " VERSION));
   Serial.println (F("Compiled on " __DATE__ " at " __TIME__ " with Arduino IDE " xstr(ARDUINO) "."));
 
-  digitalWrite (RESET, HIGH);  // ensure SS stays high for now
-  pinMode (CLOCKOUT, OUTPUT);
-
-  // set up Timer 1
-  TCCR1A = bit (COM1A0);  // toggle OC1A on Compare Match
-  TCCR1B = bit (WGM12) | bit (CS10);   // CTC, no prescaling
-  OCR1A =  0;       // output every cycle
+  initPins ();
 
  }  // end of setup
 
