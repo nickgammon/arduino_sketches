@@ -299,3 +299,65 @@ A2         Working LED (yellow)
 This sketch uses "bit banged" SPI for programming the target chip, which is why it uses pins D4, D5, D6, D7 instead of the hardware SPI pins.
 
 See the source code (and above forum post) for details about the meanings of the different numbers of LED flashes.
+
+
+High-voltage serial and parallel programming
+---------------------------------------
+
+As from 27^th^ May 2015 the sketches Atmega\_Hex\_Uploader, Atmega\_Board\_Detector and Atmega\_Board\_Programmer also optionally support the high-voltage programming mode of various chips.
+
+This is documented in some detail at http://www.gammon.com.au/forum/?id=12898
+
+For connecting your Arduino Uno to an Atmega328 (or similar) chip this is the wiring:
+
+```
+Arduino    Target chip
+-------------------------------------
+  D2       12 (PD6)
+  D3       13 (PD7)
+  D4       25 (PC2)
+  D5       7 and 20 (VCC and AVCC)
+  D6       14 (PB0) (data bit 0)
+  D7       15 (PB1) (data bit 1)
+  D8       16 (PB2) (data bit 2)
+  D9       17 (PB3) (data bit 3)
+  D10      18 (PB4) (data bit 4)
+  D11      19 (PB5) (data bit 5)
+  D12      23 (PC0) (data bit 6)
+  D13      24 (PC1) (data bit 7)
+  A0        3 (PD1)
+  A1        4 (PD2)
+  A2        5 (PD3)
+  A3        6 (PD4)
+  A4        9 (XTAL1)
+  A5        11 (PD5)
+
+  /RESET (pin 1) on target connected to 12V via a transistor and MOSFET as shown in the schematic.
+  Also connect the grounds. Gnd to pins 8 and 22.
+  Decoupling capacitors: 0.1 uF between VCC/AVCC (pins 7 and 20) and Gnd.
+  Not connected on target: pins 2, 10, 21, 26, 27, 28.
+```
+
+###Reset circuitry###
+
+![Reset circuit](http://www.gammon.com.au/images/Arduino/HV_Programmer3.png)
+
+
+For connecting your Arduino Uno to an ATtiny85 (or similar) chip this is the wiring:
+
+```
+Arduino    Target chip
+-------------------------------------
+  D3         8 (VCC)
+  D4         5 (PB0)
+  D5         6 (PB1)
+  D6         7 (PB2)
+  D7         2 (PB3)
+
+ /RESET (pin 1) on target connected to 12V via a transistor and MOSFET as shown in the schematic.
+ Also connect the ground. GND to pin 4.
+ Decoupling capacitor: 0.1 µF (100 nF) between VCC (pin 8) and Gnd.
+ Not connected on target: pin 3.
+```
+
+
