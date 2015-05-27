@@ -535,8 +535,7 @@ void setup ()
 #endif // SD_CARD_ACTIVE
   
 }  // end of setup
-
-  
+ 
 bool getYesNo ()
   {
   char response [5];
@@ -544,66 +543,6 @@ bool getYesNo ()
     
   return strcmp (response, "YES") == 0;
   }  // end of getYesNo
-
-
-// --------------------- testing writing --------------------
-//#if 0
-
-void writeFlashTest ()
-  {
-  const unsigned int BYTES_TO_WRITE = 512;
-  
-  progressBarCount = 0;
-
-  pagesize = currentSignature.pageSize;
-  pagemask = ~(pagesize - 1);
-  oldPage = NO_PAGE;
-
- // const byte foo [] = "Nick Gammon eats worms";
-  
-  byte foo [256];
-  for (int i = 0; i < sizeof foo; i++)
-    foo [i] = i;
-    
-  unsigned int address;  
-  
-  // ensure back in programming mode  
-  if (!startProgramming ())
-    return;
-
-  Serial.println (F("Erasing chip ..."));
-  eraseMemory ();
-  Serial.println (F("Writing flash ..."));
-
-  for (address = 0; address < BYTES_TO_WRITE; address += sizeof foo)
-    writeData (address, foo, sizeof (foo));
-   
-  // commit final page
-  if (oldPage != NO_PAGE)
-    commitPage (oldPage);
-
-  Serial.println ();   // finish line of dots
-
-  Serial.println (F("Verifying ..."));
-
-  for (address = 0; address < BYTES_TO_WRITE; address += sizeof foo)
-    verifyData (address, foo, sizeof (foo));
-
- Serial.println ();   // finish line of dots
- if (errors == 0)
-    Serial.println (F("No errors found."));
-  else
-    {
-    Serial.print (errors, DEC);
-    Serial.println (F(" verification error(s)."));
-    if (errors > 100)
-      Serial.println (F("First 100 shown."));
-    }  // end if
-
-  Serial.println (F("Done!"));
-    
-  }  // end of writeFlashContents
-//#endif  // --------------------- testing writing --------------------
   
 void eraseFlashContents ()
   {
@@ -845,13 +784,6 @@ void loop ()
       showDirectory ();
       break;
 #endif // SD_CARD_ACTIVE
-     
-// --------------------- testing writing --------------------
-//#if 0     
-    case 'T': 
-      writeFlashTest (); 
-      break; 
-//#endif // --------------------- testing writing --------------------
       
     default: 
       Serial.println (F("Unknown command.")); 

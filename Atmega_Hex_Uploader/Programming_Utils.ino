@@ -38,8 +38,8 @@ void writeData (const unsigned long addr, const byte * pData, const int length)
     }  // end of for
     
 #if HIGH_VOLTAGE_PARALLEL || HIGH_VOLTAGE_SERIAL
-  // if even length force out last page latch
-  if ((length & 1) == 0)
+  // if we finished on odd byte force out last page latch
+  if (((addr + length) & 1) == 1)
     writeFlash (addr + length, 0xFF);
 #endif // HIGH_VOLTAGE_PARALLEL    
 
