@@ -37,7 +37,7 @@ void writeData (const unsigned long addr, const byte * pData, const int length)
     writeFlash (addr + i, pData [i]);
     }  // end of for
     
-#if HIGH_VOLTAGE_PARALLEL
+#if HIGH_VOLTAGE_PARALLEL || HIGH_VOLTAGE_SERIAL
   // if even length force out last page latch
   if ((length & 1) == 0)
     writeFlash (addr + length, 0xFF);
