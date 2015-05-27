@@ -56,11 +56,11 @@
 #define VERSION "1.34"
 
 // make true to use the high-voltage parallel wiring
-#define HIGH_VOLTAGE_PARALLEL true
+#define HIGH_VOLTAGE_PARALLEL false
 // make true to use the high-voltage serial wiring
 #define HIGH_VOLTAGE_SERIAL false
 // make true to use ICSP programming
-#define ICSP_PROGRAMMING false
+#define ICSP_PROGRAMMING true
 
 #if HIGH_VOLTAGE_PARALLEL && HIGH_VOLTAGE_SERIAL
   #error Cannot use both high-voltage parallel and serial at the same time
