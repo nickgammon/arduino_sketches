@@ -16,6 +16,15 @@
 #define USE_ATMEGA2560 true
 #define USE_ATMEGA256RFR2 false // Pinoccio Scout
 
+/* ----------------------------------------------------------------------------
+WARNING: The Arduino Leonardo, Arduino Esplora and the Arduino Micro all use the same chip (ATmega32U4).
+They will all have the Leonardo bootloader burnt onto them. This means that if you have a 
+Micro or Esplora it will be identified as a Leonardo in the Tools -> Serial Port menu.
+This is because the PID (Product ID) in the USB firmware will be 0x0036 (Leonardo).
+This only applies during the uploading process. You should still select the correct board in the 
+Tools -> Boards menu.
+------------------------------------------------------------------------------ */
+
 // For more information including wiring, see: http://www.gammon.com.au/forum/?id=11635
 
 // Version 1.1: Reset foundSig to -1 each time around the loop.

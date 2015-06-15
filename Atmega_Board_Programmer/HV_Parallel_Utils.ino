@@ -4,6 +4,17 @@
 //
 // Author: Nick Gammon
 
+/* ----------------------------------------------------------------------------
+NOTE: This file should only be modified in the Atmega_Hex_Uploader directory.
+Copies in other directories are hard-linked to this one.
+After modifying it run the shell script:
+  fixup_links.sh
+This script needs to be run in the directories:
+  Atmega_Board_Programmer and Atmega_Board_Detector
+That will ensure that those directories now are using the same file.
+------------------------------------------------------------------------------ */
+
+
 #if HIGH_VOLTAGE_PARALLEL
 
 // Latch in an action. The data argument is loaded into the appropriate latch. It might be
