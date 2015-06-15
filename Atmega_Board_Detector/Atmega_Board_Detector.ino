@@ -19,8 +19,9 @@
 // Version 1.14: Added support for ATmega328
 // Version 1.15: Added preliminary support for high-voltage programming mode for Atmega328 family
 // Version 1.16: Major tidy-ups, made code more modular
+// Version 1.17: Added signature for Leonardo_prod_firmware_2012_12_10 bootloader
 
-const char Version [] = "1.16";
+const char Version [] = "1.17";
 
 // make true to use the high-voltage parallel wiring
 #define HIGH_VOLTAGE_PARALLEL false
@@ -42,8 +43,6 @@ const char Version [] = "1.16";
 #endif
 
 #define USE_BIT_BANGED_SPI false
-
-
 
 /*
 
@@ -129,13 +128,14 @@ const char Mega2560_Original                    [] PROGMEM = "Mega2560_Original"
 const char optiboot_atmega1284p                 [] PROGMEM = "optiboot_atmega1284p";
 const char Ruggeduino                           [] PROGMEM = "Ruggeduino";
 const char Leonardo_prod_firmware_2012_04_26    [] PROGMEM = "Leonardo-prod-firmware-2012-04-26";
+const char Leonardo_prod_firmware_2012_12_10    [] PROGMEM = "Leonardo-prod-firmware-2012-12-10";
 const char atmega2560_bootloader_wd_bug_fixed   [] PROGMEM = "atmega2560_bootloader_watchdog_bug_fixed";
 const char Caterina_Esplora                     [] PROGMEM = "Esplora";
 const char Sanguino_ATmegaBOOT_644P             [] PROGMEM = "Sanguino_ATmegaBOOT_644P";
 const char Sanguino_ATmegaBOOT_168_atmega644p   [] PROGMEM = "Sanguino_ATmegaBOOT_168_atmega644p";
 const char Sanguino_ATmegaBOOT_168_atmega1284p  [] PROGMEM = "Sanguino_ATmegaBOOT_168_atmega1284p";
 const char Sanguino_ATmegaBOOT_168_atmega1284p_8m [] PROGMEM = "Sanguino_ATmegaBOOT_168_atmega1284p_8m";
-const char  Arduino_dfu_usbserial_atmega16u2_Uno_Rev3 [] PROGMEM = "Arduino-dfu-usbserial-atmega16u2-Uno-Rev3";
+const char Arduino_dfu_usbserial_atmega16u2_Uno_Rev3 [] PROGMEM = "Arduino-dfu-usbserial-atmega16u2-Uno-Rev3";
 
 // Signatures (MD5 sums) for above bootloaders
 const deviceDatabaseType deviceDatabase [] PROGMEM = 
@@ -169,6 +169,7 @@ const deviceDatabaseType deviceDatabase [] PROGMEM =
   { { 0x71, 0xDD, 0xC2, 0x84, 0x64, 0xC4, 0x73, 0x27, 0xD2, 0x33, 0x01, 0x1E, 0xFA, 0xE1, 0x24, 0x4B,  }, optiboot_atmega1284p },
   { { 0x0F, 0x02, 0x31, 0x72, 0x95, 0xC8, 0xF7, 0xFD, 0x1B, 0xB7, 0x07, 0x17, 0x85, 0xA5, 0x66, 0x87,  }, Ruggeduino }, 
   { { 0x53, 0xE0, 0x2C, 0xBC, 0x87, 0xF5, 0x0B, 0x68, 0x2C, 0x71, 0x13, 0xE0, 0xED, 0x84, 0x05, 0x34,  }, Leonardo_prod_firmware_2012_04_26 }, 
+  { { 0xF3, 0x9D, 0xC5, 0xF5, 0x96, 0x43, 0x85, 0x84, 0x5C, 0xC5, 0x5B, 0x2F, 0x9B, 0x90, 0x6D, 0x38,  }, Leonardo_prod_firmware_2012_12_10 }, 
   { { 0x12, 0xAA, 0x80, 0x07, 0x4D, 0x74, 0xE3, 0xDA, 0xBF, 0x2D, 0x25, 0x84, 0x6D, 0x99, 0xF7, 0x20,  }, atmega2560_bootloader_wd_bug_fixed }, 
   { { 0x32, 0x56, 0xC1, 0xD3, 0xAC, 0x78, 0x32, 0x4D, 0x04, 0x6D, 0x3F, 0x6D, 0x01, 0xEC, 0xAE, 0x09,  }, Caterina_Esplora }, 
   { { 0x39, 0xCC, 0x80, 0xD6, 0xDE, 0xA2, 0xC4, 0x91, 0x6F, 0xBC, 0xE8, 0xDD, 0x70, 0xF2, 0xA2, 0x33,  }, Sanguino_ATmegaBOOT_644P }, 

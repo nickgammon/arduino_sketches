@@ -52,8 +52,9 @@
 // Version 1.32: Bug fixes, added support for At90USB82, At90USB162 signatures
 // Version 1.33: Added support for ATMEGA256RFR2 (Pinoccio Scout)
 // Version 1.34: Added support for high-voltage programming mode for Atmega328 / ATtiny25 family
+// Version 1.35: Updated bootloader for Leonardo/Micro to Leonardo-prod-firmware-2012-12-10.hex
 
-#define VERSION "1.34"
+#define VERSION "1.35"
 
 // make true to use the high-voltage parallel wiring
 #define HIGH_VOLTAGE_PARALLEL false
