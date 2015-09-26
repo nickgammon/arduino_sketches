@@ -122,7 +122,8 @@ const signatureType signatures [] =
 // if signature found in above table, this is its index
 int foundSig = -1;
 
-void showHex (const byte b, const boolean newline = false)
+void showHex (const byte b, const boolean newline = false);
+void showHex (const byte b, const boolean newline)
   {
   // try to avoid using sprintf
   char buf [4] = { ((b >> 4) & 0x0F) | '0', (b & 0x0F) | '0', ' ' , 0 };
@@ -135,7 +136,8 @@ void showHex (const byte b, const boolean newline = false)
     Serial.println ();
   }  // end of showHex 
 
-void showYesNo (const boolean b, const boolean newline = false)
+void showYesNo (const boolean b, const boolean newline = false);
+void showYesNo (const boolean b, const boolean newline)
   {
   if (b)
     Serial.print (F("Yes"));
