@@ -519,7 +519,8 @@ byte lastAddressMSB = 0;
  
 // execute one programming instruction ... b1 is command, b2, b3, b4 are arguments
 //  processor may return a result on the 4th transfer, this is returned.
-byte program (const byte b1, const byte b2 = 0, const byte b3 = 0, const byte b4 = 0)
+byte program (const byte b1, const byte b2 = 0, const byte b3 = 0, const byte b4 = 0);
+byte program (const byte b1, const byte b2, const byte b3, const byte b4)
   {
   SPI.transfer (b1);  
   SPI.transfer (b2);  
@@ -527,7 +528,8 @@ byte program (const byte b1, const byte b2 = 0, const byte b3 = 0, const byte b4
   return SPI.transfer (b4);  
   } // end of program
  
-void showHex (const byte b, const boolean newline = false)
+void showHex (const byte b, const boolean newline = false);
+void showHex (const byte b, const boolean newline)
   {
   Serial.print (F("0x"));
   // try to avoid using sprintf
