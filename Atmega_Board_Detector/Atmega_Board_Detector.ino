@@ -20,8 +20,9 @@
 // Version 1.15: Added preliminary support for high-voltage programming mode for Atmega328 family
 // Version 1.16: Major tidy-ups, made code more modular
 // Version 1.17: Added signature for Leonardo_prod_firmware_2012_12_10 bootloader
+// Version 1.18: Got rid of compiler warnings in IDE 1.6.7
 
-const char Version [] = "1.17";
+const char Version [] = "1.18";
 
 // make true to use the high-voltage parallel wiring
 #define HIGH_VOLTAGE_PARALLEL false
@@ -90,6 +91,7 @@ const int ENTER_PROGRAMMING_ATTEMPTS = 50;
 #include "HV_Pins.h"
 #include "Signatures.h"
 #include "General_Stuff.h"
+#include <string.h>  // needed for memcpy
 
 // for looking up known signatures
 typedef struct {

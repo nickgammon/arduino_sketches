@@ -1,7 +1,7 @@
 // Atmega chip fuse caculator
 // Author: Nick Gammon
 // Date: 22nd May 2012
-// Version: 1.10
+// Version: 1.11
 
 // Version 1.1: Output an 8 MHz clock on pin 9
 // Version 1.2: Corrected flash size for Atmega1284P.
@@ -14,8 +14,9 @@
 // Version 1.8: Cleaned up _BV () macro to use bit () macro instead for readability
 // Version 1.9: Display message if cannot enter programming mode.
 // Version 1.10: Added support for At90USB82, At90USB162
+// Version 1.11: Got rid of compiler warnings in IDE 1.6.7
 
-#define VERSION "1.10"
+#define VERSION "1.11"
 
 /*
 
@@ -442,7 +443,7 @@ const fuseMeaning ATmega8_fuses [] PROGMEM =
 // structure for information about a single processor
 typedef struct {
    byte sig [3];
-   char * desc;
+   const char * desc;
    unsigned long flashSize;
    unsigned int baseBootSize;
    const fuseMeaning * fusesInfo;
@@ -533,7 +534,11 @@ void showHex (const byte b, const boolean newline)
   {
   Serial.print (F("0x"));
   // try to avoid using sprintf
-  char buf [4] = { ((b >> 4) & 0x0F) | '0', (b & 0x0F) | '0', ' ' , 0 };
+  char buf [4];
+  buf [0] = ((b >> 4) & 0x0F) | '0';
+  buf [1] = (b & 0x0F) | '0';
+  buf [2] = ' ';
+  buf [3] = 0;
   if (buf [0] > '9')
     buf [0] += 7;
   if (buf [1] > '9')

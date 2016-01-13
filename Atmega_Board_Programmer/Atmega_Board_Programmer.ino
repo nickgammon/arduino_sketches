@@ -1,7 +1,7 @@
 // Atmega chip programmer
 // Author: Nick Gammon
 // Date: 22nd May 2012
-// Version: 1.33
+// Version: 1.36
 
 // IMPORTANT: If you get a compile or verification error, due to the sketch size,
 // make some of these false to reduce compile size (the ones you don't want).
@@ -62,8 +62,9 @@ Tools -> Boards menu.
 // Version 1.33: Added support for ATMEGA256RFR2 (Pinoccio Scout)
 // Version 1.34: Added support for high-voltage programming mode for Atmega328 / ATtiny25 family
 // Version 1.35: Updated bootloader for Leonardo/Micro to Leonardo-prod-firmware-2012-12-10.hex
+// Version 1.36: Got rid of compiler warnings in IDE 1.6.7
 
-#define VERSION "1.35"
+#define VERSION "1.36"
 
 // make true to use the high-voltage parallel wiring
 #define HIGH_VOLTAGE_PARALLEL false

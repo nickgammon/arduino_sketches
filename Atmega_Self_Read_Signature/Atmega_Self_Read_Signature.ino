@@ -34,6 +34,7 @@
 
 #include <avr/boot.h>
 #include <avr/pgmspace.h>
+#include <string.h>  // for memcpy
 
 extern "C" 
   {
@@ -47,7 +48,7 @@ extern "C"
 
 typedef struct {
    byte sig [3];
-   char * desc;
+   const char * desc;
    unsigned long flashSize;
    unsigned int baseBootSize;
 } signatureType;
@@ -126,7 +127,11 @@ void showHex (const byte b, const boolean newline = false);
 void showHex (const byte b, const boolean newline)
   {
   // try to avoid using sprintf
-  char buf [4] = { ((b >> 4) & 0x0F) | '0', (b & 0x0F) | '0', ' ' , 0 };
+  char buf [4];
+  buf [0] = ((b >> 4) & 0x0F) | '0';
+  buf [1] = (b & 0x0F) | '0';
+  buf [2] = ' ';
+  buf [3] = 0;
   if (buf [0] > '9')
     buf [0] += 7;
   if (buf [1] > '9')

@@ -388,7 +388,7 @@ bool chooseInputFile ()
   
   // save new file name if it changed from what we have saved
   if (strcmp (fileNameInEEPROM, lastFileName) != 0)
-    eeprom_write_block (&lastFileName, LAST_FILENAME_LOCATION_IN_EEPROM, MAX_FILENAME);
+    eeprom_write_block ((const void *) &lastFileName, LAST_FILENAME_LOCATION_IN_EEPROM, MAX_FILENAME);
   
   // check file would fit into device memory
   if (highestAddress > currentSignature.flashSize)

@@ -63,7 +63,11 @@ void showHex (const byte b, const boolean newline, const boolean show0x)
   if (show0x)
     Serial.print (F("0x"));
   // try to avoid using sprintf
-  char buf [4] = { ((b >> 4) & 0x0F) | '0', (b & 0x0F) | '0', ' ' , 0 };
+  char buf [4];
+  buf [0] = ((b >> 4) & 0x0F) | '0';
+  buf [1] = (b & 0x0F) | '0';
+  buf [2] = ' ';
+  buf [3] = 0;
   if (buf [0] > '9')
     buf [0] += 7;
   if (buf [1] > '9')

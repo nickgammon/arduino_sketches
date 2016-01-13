@@ -1,7 +1,7 @@
 // Atmega hex file uploader (from SD card)
 // Author: Nick Gammon
 // Date: 22nd May 2012
-// Version: 1.31     // NB update 'Version' variable below!
+// Version: 1.35     // NB update 'Version' variable below!
 
 // Version 1.1: Some code cleanups as suggested on the Arduino forum.
 // Version 1.2: Cleared temporary flash area to 0xFF before doing each page
@@ -42,6 +42,7 @@
 // Version 1.32: Added preliminary support for high-voltage programming mode for Atmega328 family
 // Version 1.33: Major tidy-ups, made code more modular
 // Version 1.34: Added include for SPI.h, and various tidy-ups to correct some issues
+// Version 1.35: Got rid of compiler warnings in IDE 1.6.7
 
 
 const bool allowTargetToRun = true;  // if true, programming lines are freed when not programming
@@ -123,7 +124,7 @@ const bool allowTargetToRun = true;  // if true, programming lines are freed whe
 
 // #include <memdebug.h>
 
-const char Version [] = "1.34";
+const char Version [] = "1.35";
 
 const unsigned int ENTER_PROGRAMMING_ATTEMPTS = 50;
 
@@ -242,7 +243,7 @@ const byte CLOCKOUT = 9;
   #endif
 
   const int MAX_FILENAME = 13;
-  const int LAST_FILENAME_LOCATION_IN_EEPROM = 0;
+  void * LAST_FILENAME_LOCATION_IN_EEPROM = 0;
 
   // file system object
   SdFat sd;
