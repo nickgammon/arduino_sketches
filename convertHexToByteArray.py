@@ -7,6 +7,11 @@ import hashlib
 from intelhex import IntelHex
 
 def main():
+    # Check if one input argument is provided
+    if len(sys.argv) != 2:
+        print "Usage:", sys.argv[0], "bootloader.hex"
+        sys.exit(1)
+
     # Input arguments
     hexfile = sys.argv[1]
 
