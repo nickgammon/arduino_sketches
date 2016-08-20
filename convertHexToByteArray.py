@@ -15,6 +15,11 @@ def main():
     # Input arguments
     hexfile = sys.argv[1]
 
+    # Check if file exists
+    if not os.path.isfile(hexfile):
+        print "Error: File does not exist."
+        sys.exit(2)
+
     # Read bootloader data
     bootloader = IntelHex(hexfile)
     bootloader_bin = bootloader.tobinarray()
