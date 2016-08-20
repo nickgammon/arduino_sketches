@@ -27,11 +27,12 @@ def main():
     fd.close()
 
     # Print header
+    filename = os.path.splitext(os.path.basename(hexfile))[0]
     print '// File =', hexfile
     print '// Loader start:', hex(bootloader.minaddr()), 'length', len(bootloader_bin)
     print '// MD5 sum =', md5.hexdigest()
     print
-    print 'const uint8_t', os.path.splitext(hexfile)[0] + '_hex [] PROGMEM = {'
+    print 'const uint8_t', filename + '_hex [] PROGMEM = {'
 
     # Print data
     line = ""
@@ -42,7 +43,7 @@ def main():
             line = ''
 
     # Print footer
-    print '}; // end of', os.path.splitext(hexfile)[0] + '_hex'
+    print '}; // end of', filename + '_hex'
 
 if __name__ == "__main__":
     main()
