@@ -41,6 +41,8 @@ def main():
         if i % 16 == 15:
             print line
             line = ''
+    if line:
+        print line
 
     # Print footer
     print '}; // end of', filename + '_hex'
