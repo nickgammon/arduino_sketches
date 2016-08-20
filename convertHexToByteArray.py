@@ -25,16 +25,49 @@ def main():
     bootloader_bin = bootloader.tobinarray()
     #bootloader.dump()
 
-    # Calculate md5sum
+    # Start address
+    loaderStart = bootloader.minaddr()
+
+    # Given a start address, deduce where the bootloader ends
+    end_addresses = {
+        0x1000: 0x2000,
+        0x1C00: 0x2000,
+        0x1D00: 0x2000,
+        0x1E00: 0x2000,
+        0x3000: 0x4000,
+        0x3800: 0x4000,
+        0x3E00: 0x4000,
+        0x7000: 0x8000,
+        0x7800: 0x8000,
+        0x7E00: 0x8000,
+        0xF800: 0x10000,
+        0x1F000: 0x20000,
+        0x1FC00: 0x20000,
+        0x3E000: 0x40000,
+    }
+    if not loaderStart in end_addresses:
+        print "Error: Unkown bootloader start address."
+        sys.exit(3)
+    loaderEnd = end_addresses[loaderStart]
+
+    # Len
+    loaderLen = loaderEnd - loaderStart
+    if loaderLen < len(bootloader_bin):
+        print "Error: Invalid bootloader length."
+        sys.exit(4)
+
+    # Calculate md5sum from hexfile and add padding bytes with 0xFF
     md5 = hashlib.md5()
-    fd = open(hexfile, 'rb')
-    md5.update(fd.read())
-    fd.close()
+    md5.update(bootloader_bin)
+    padding = [0xFF] * (loaderLen - len(bootloader_bin))
+    md5.update(bytearray(padding))
+
+    # Filename without full path and without ".hex"
+    filename = os.path.splitext(os.path.basename(hexfile))[0]
 
     # Print header
-    filename = os.path.splitext(os.path.basename(hexfile))[0]
-    print '// File =', hexfile
-    print '// Loader start:', hex(bootloader.minaddr()), 'length', len(bootloader_bin)
+    print '// File =', filename + ".hex"
+    print '// Loader start:', hex(loaderStart), 'length', loaderLen
     print '// MD5 sum =', md5.hexdigest()
     print
     print 'const uint8_t', filename + '_hex [] PROGMEM = {'
