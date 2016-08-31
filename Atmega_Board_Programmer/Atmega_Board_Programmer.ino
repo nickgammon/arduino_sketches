@@ -1,7 +1,7 @@
 // Atmega chip programmer
 // Author: Nick Gammon
 // Date: 22nd May 2012
-// Version: 1.36
+// Version: 1.37
 
 // IMPORTANT: If you get a compile or verification error, due to the sketch size,
 // make some of these false to reduce compile size (the ones you don't want).
@@ -63,8 +63,9 @@ Tools -> Boards menu.
 // Version 1.34: Added support for high-voltage programming mode for Atmega328 / ATtiny25 family
 // Version 1.35: Updated bootloader for Leonardo/Micro to Leonardo-prod-firmware-2012-12-10.hex
 // Version 1.36: Got rid of compiler warnings in IDE 1.6.7
+// Version 1.37: Got rid of compiler warnings in IDE 1.6.9, added more information about where bootloaders came from
 
-#define VERSION "1.36"
+#define VERSION "1.37"
 
 // make true to use the high-voltage parallel wiring
 #define HIGH_VOLTAGE_PARALLEL false
@@ -353,7 +354,7 @@ void writeBootloader ()
   {
   bool foundBootloader = false;
   
-  for (int j = 0; j < NUMITEMS (bootloaders); j++)
+  for (unsigned int j = 0; j < NUMITEMS (bootloaders); j++)
     {
       
     memcpy_P (&currentBootloader, &bootloaders [j], sizeof currentBootloader);
@@ -378,7 +379,7 @@ void writeBootloader ()
     return;
     }
 
-  int i;
+  unsigned int i;
 
   byte lFuse = readFuse (lowFuse);
 
@@ -546,7 +547,7 @@ void getSignature ()
   
   Serial.println ();
 
-  for (int j = 0; j < NUMITEMS (signatures); j++)
+  for (unsigned int j = 0; j < NUMITEMS (signatures); j++)
     {
       
     memcpy_P (&currentSignature, &signatures [j], sizeof currentSignature);
