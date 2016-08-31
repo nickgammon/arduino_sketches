@@ -62,13 +62,20 @@ def main():
     padding = [0xFF] * (loaderLen - len(bootloader_bin))
     md5.update(bytearray(padding))
 
+    # Calculatae md5sum from the original file so we know which disk file it came from
+    filemd5 = hashlib.md5()
+    fd = open(hexfile, 'rb')
+    filemd5.update(fd.read())
+    fd.close()
+
     # Filename without full path and without ".hex"
     filename = os.path.splitext(os.path.basename(hexfile))[0]
 
     # Print header
     print '// File =', filename + ".hex"
     print '// Loader start:', hex(loaderStart), 'length', loaderLen
-    print '// MD5 sum =', md5.hexdigest()
+    print '// Bootloader MD5 sum =', md5.hexdigest()
+    print '// Original file MD5 sum =', filemd5.hexdigest()
     print
     print 'const uint8_t', filename + '_hex [] PROGMEM = {'
 
