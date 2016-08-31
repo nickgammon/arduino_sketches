@@ -361,4 +361,12 @@ Arduino    Target chip
  Not connected on target: pin 3.
 ```
 
+convertHexToByteArray.py
+------------------------
 
+The `convertHexToByteArray.py` tool allows you to easily convert `.hex` files
+into a c array that you can use inside the tools above. Its an alternative to
+the lua script and easier to setup in most cases.
+
+To run the script you need `python2` and the `intelhex` python library which can
+be downloaded [here](https://github.com/bialix/intelhex) or via `pip`.
