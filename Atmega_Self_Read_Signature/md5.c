@@ -17,7 +17,9 @@
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
+#pragma GCC optimize ("-O0") // avoid GCC memcpy inline
 
+#include <string.h>  // for memcpy
 #include "md5.h"
 
 #define GET_UINT32(n,b,i)                       \
