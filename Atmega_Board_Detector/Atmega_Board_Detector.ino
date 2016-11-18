@@ -1,7 +1,7 @@
 // Atmega chip fuse detector
 // Author: Nick Gammon
 // Date: 22nd May 2012
-// Version: 1.15
+// Version: 1.19
 
 // Version 1.1 added signatures for Attiny24/44/84 (5 May 2012)
 // Version 1.2 added signatures for ATmeag8U2/16U2/32U2 (7 May 2012)
@@ -21,8 +21,10 @@
 // Version 1.16: Major tidy-ups, made code more modular
 // Version 1.17: Added signature for Leonardo_prod_firmware_2012_12_10 bootloader
 // Version 1.18: Got rid of compiler warnings in IDE 1.6.7
+// Version 1.19: Added more signatures: ATmega168V, ATmega328PB, ATmega1284
 
-const char Version [] = "1.18";
+
+const char Version [] = "1.19";
 
 // make true to use the high-voltage parallel wiring
 #define HIGH_VOLTAGE_PARALLEL false
@@ -72,6 +74,7 @@ const char Version [] = "1.18";
  or the use or other dealings in the software.
 
 */
+#pragma GCC optimize ("-O0") // avoid GCC memcpy inline
 
 #include <SPI.h>
 extern "C"
@@ -327,6 +330,8 @@ void readProgram ()
     // show address
     if (i % 16 == 0)
       {
+      if ((addr + i) < 16)
+        Serial.print (F("0"));
       Serial.print (addr + i, HEX);
       Serial.print (F(": "));
       }
