@@ -1,7 +1,7 @@
 // Atmega chip fuse detector
 // Author: Nick Gammon
-// Date: 22nd May 2012
-// Version: 1.19
+// Date: 19nd March 2017
+// Version: 1.20
 
 // Version 1.1 added signatures for Attiny24/44/84 (5 May 2012)
 // Version 1.2 added signatures for ATmeag8U2/16U2/32U2 (7 May 2012)
@@ -22,9 +22,9 @@
 // Version 1.17: Added signature for Leonardo_prod_firmware_2012_12_10 bootloader
 // Version 1.18: Got rid of compiler warnings in IDE 1.6.7
 // Version 1.19: Added more signatures: ATmega168V, ATmega328PB, ATmega1284
+// Version 1.20: Added MD5 sum for Pro Mini Optiboot bootloader (19 March 2017 by Patrick Bouffel)
 
-
-const char Version [] = "1.19";
+const char Version [] = "1.20";
 
 // make true to use the high-voltage parallel wiring
 #define HIGH_VOLTAGE_PARALLEL false
@@ -182,6 +182,7 @@ const deviceDatabaseType deviceDatabase [] PROGMEM =
   { { 0xC1, 0x17, 0xE3, 0x5E, 0x9C, 0x43, 0x66, 0x5F, 0x1E, 0x4C, 0x41, 0x95, 0x44, 0x60, 0x47, 0xD5,  }, Sanguino_ATmegaBOOT_168_atmega1284p }, 
   { { 0x27, 0x4B, 0x68, 0x8A, 0x8A, 0xA2, 0x4C, 0xE7, 0x30, 0x7F, 0x97, 0x37, 0x87, 0x16, 0x4E, 0x21,  }, Sanguino_ATmegaBOOT_168_atmega1284p_8m }, 
   { { 0xD8, 0x8C, 0x70, 0x6D, 0xFE, 0x1F, 0xDC, 0x38, 0x82, 0x1E, 0xCE, 0xAE, 0x23, 0xB2, 0xE6, 0xE7,  }, Arduino_dfu_usbserial_atmega16u2_Uno_Rev3 }, 
+  { { 0x5B, 0xA4, 0x80, 0x2A, 0xC9, 0x1F, 0x82, 0x01, 0x2F, 0x0D, 0xDA, 0x8A, 0xE4, 0x91, 0xC3, 0x5A,  }, optiboot_atmega328 }, 
   };
 
 // Print a string from Program Memory directly to save RAM 
