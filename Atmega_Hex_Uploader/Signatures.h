@@ -63,7 +63,9 @@ const signatureType signatures [] PROGMEM =
   { { 0x1E, 0x92, 0x0A }, "ATmega48PA",   4 * kb,         0,    64,  NO_FUSE,  false  },
   { { 0x1E, 0x93, 0x0F }, "ATmega88PA",   8 * kb,       256,   128,  extFuse,  false },
   { { 0x1E, 0x94, 0x0B }, "ATmega168PA", 16 * kb,       256,   128,  extFuse,  false },
+  { { 0x1E, 0x94, 0x06 }, "ATmega168V",  16 * kb,       256,   128,  extFuse,  false },
   { { 0x1E, 0x95, 0x0F }, "ATmega328P",  32 * kb,       512,   128,  highFuse, false },
+  { { 0x1E, 0x95, 0x16 }, "ATmega328PB", 32 * kb,       512,   128,  highFuse, false },
   { { 0x1E, 0x95, 0x14 }, "ATmega328",   32 * kb,       512,   128,  highFuse, false },
 
   // Atmega644 family
@@ -94,6 +96,7 @@ const signatureType signatures [] PROGMEM =
 
   // ATmega1284P family
   { { 0x1E, 0x97, 0x05 }, "ATmega1284P", 128 * kb,   1 * kb,   256,  highFuse, false },
+  { { 0x1E, 0x97, 0x06 }, "ATmega1284",  128 * kb,   1 * kb,   256,  highFuse, false },
 
   // ATtiny4313 family
   { { 0x1E, 0x91, 0x0A }, "ATtiny2313A",   2 * kb,        0,    32,  NO_FUSE,  false   },
