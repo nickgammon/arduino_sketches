@@ -1,7 +1,7 @@
 // Atmega hex file uploader (from SD card)
 // Author: Nick Gammon
 // Date: 22nd May 2012
-// Version: 1.35     // NB update 'Version' variable below!
+// Version: 1.36     // NB update 'Version' variable below!
 
 // Version 1.1: Some code cleanups as suggested on the Arduino forum.
 // Version 1.2: Cleared temporary flash area to 0xFF before doing each page
@@ -43,6 +43,7 @@
 // Version 1.33: Major tidy-ups, made code more modular
 // Version 1.34: Added include for SPI.h, and various tidy-ups to correct some issues
 // Version 1.35: Got rid of compiler warnings in IDE 1.6.7
+// Version 1.36: Got rid of warning from cppcheck regarding scope of allFF variable
 
 
 const bool allowTargetToRun = true;  // if true, programming lines are freed when not programming
@@ -124,7 +125,7 @@ const bool allowTargetToRun = true;  // if true, programming lines are freed whe
 
 // #include <memdebug.h>
 
-const char Version [] = "1.35";
+const char Version [] = "1.36";
 
 const unsigned int ENTER_PROGRAMMING_ATTEMPTS = 50;
 
