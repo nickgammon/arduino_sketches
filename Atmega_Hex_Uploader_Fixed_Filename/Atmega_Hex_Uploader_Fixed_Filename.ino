@@ -1,7 +1,7 @@
 // Atmega hex file uploader (from SD card)
 // Author: Nick Gammon
 // Date: 22nd May 2012
-// Version: 1.25d     // NB update 'Version' variable below!
+// Version: 1.25h     // NB update 'Version' variable below!
 
 // Version 1.1: Some code cleanups as suggested on the Arduino forum.
 // Version 1.2: Cleared temporary flash area to 0xFF before doing each page
@@ -38,6 +38,7 @@
 // Version 1.25e: Added support for Crossroads' standalone programming board with 2 x 7-segment LEDs
 // Version 1.25f: Added support for Crossroads' standalone programming board with 1 x 7-segment LEDs
 // Version 1.25g: Allowed for 256 file names (ie. hex file names)
+// Version 1.25h: Slowed down bit-banged programming slightly to improve reliability
 
 /*
 
@@ -171,7 +172,7 @@ typedef enum {
 #include <SdFat.h>
 #include <EEPROM.h>
 
-const char Version [] = "1.25g";
+const char Version [] = "1.25h";
 
 const unsigned int ENTER_PROGRAMMING_ATTEMPTS = 2;
 
@@ -260,7 +261,7 @@ Other leg of LED goes to Gnd.
 #endif
 
 // control speed of programming
-const byte BB_DELAY_MICROSECONDS = 4;
+const byte BB_DELAY_MICROSECONDS = 6;
 
 // target board reset goes to here
 const byte RESET = MSPIM_SS;
