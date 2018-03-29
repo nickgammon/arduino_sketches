@@ -18,10 +18,10 @@
 
 /* ----------------------------------------------------------------------------
 WARNING: The Arduino Leonardo, Arduino Esplora and the Arduino Micro all use the same chip (ATmega32U4).
-They will all have the Leonardo bootloader burnt onto them. This means that if you have a 
+They will all have the Leonardo bootloader burnt onto them. This means that if you have a
 Micro or Esplora it will be identified as a Leonardo in the Tools -> Serial Port menu.
 This is because the PID (Product ID) in the USB firmware will be 0x0036 (Leonardo).
-This only applies during the uploading process. You should still select the correct board in the 
+This only applies during the uploading process. You should still select the correct board in the
 Tools -> Boards menu.
 ------------------------------------------------------------------------------ */
 
@@ -56,7 +56,7 @@ Tools -> Boards menu.
 // Version 1.27: Made bootloaders conditional, so you can omit some to save space
 // Version 1.28: Changed _BV () macro to bit () macro.
 // Version 1.29: Display message if cannot enter programming mode.
-// Version 1.30: Various tidy-ups 
+// Version 1.30: Various tidy-ups
 // Version 1.31: Fixed bug in doing second lot of programming under IDE 1.6.0
 // Version 1.32: Bug fixes, added support for At90USB82, At90USB162 signatures
 // Version 1.33: Added support for ATMEGA256RFR2 (Pinoccio Scout)
@@ -64,8 +64,9 @@ Tools -> Boards menu.
 // Version 1.35: Updated bootloader for Leonardo/Micro to Leonardo-prod-firmware-2012-12-10.hex
 // Version 1.36: Got rid of compiler warnings in IDE 1.6.7
 // Version 1.37: Got rid of compiler warnings in IDE 1.6.9, added more information about where bootloaders came from
+// Version 1.38: Added Atmega328PB to list of supported bootloaders
 
-#define VERSION "1.37"
+#define VERSION "1.38"
 
 // make true to use the high-voltage parallel wiring
 #define HIGH_VOLTAGE_PARALLEL false
@@ -76,14 +77,14 @@ Tools -> Boards menu.
 
 #if HIGH_VOLTAGE_PARALLEL && HIGH_VOLTAGE_SERIAL
   #error Cannot use both high-voltage parallel and serial at the same time
-#endif 
+#endif
 
 #if (HIGH_VOLTAGE_PARALLEL || HIGH_VOLTAGE_SERIAL) && ICSP_PROGRAMMING
   #error Cannot use ICSP and high-voltage programming at the same time
 #endif
 
 #if !(HIGH_VOLTAGE_PARALLEL || HIGH_VOLTAGE_SERIAL || ICSP_PROGRAMMING)
-  #error Choose a programming mode: HIGH_VOLTAGE_PARALLEL, HIGH_VOLTAGE_SERIAL or ICSP_PROGRAMMING 
+  #error Choose a programming mode: HIGH_VOLTAGE_PARALLEL, HIGH_VOLTAGE_SERIAL or ICSP_PROGRAMMING
 #endif
 
 const int ENTER_PROGRAMMING_ATTEMPTS = 50;
@@ -131,7 +132,7 @@ const byte CLOCKOUT = 9;
   #else
     const byte RESET = 10;  // --> goes to reset on the target board
   #endif
-  
+
   #if ARDUINO < 100
     const byte SCK = 13;    // SPI clock
   #endif
@@ -193,7 +194,7 @@ const bootloaderType bootloaders [] PROGMEM =
 // If not compiled into this particular version the bootloader address will be zero.
 
   // ATmega168PA
-  { { 0x1E, 0x94, 0x0B }, 
+  { { 0x1E, 0x94, 0x0B },
         0x3E00,               // start address
   #if USE_ATMEGA168
         atmega168_optiboot,   // loader image
@@ -207,7 +208,7 @@ const bootloaderType bootloaders [] PROGMEM =
         0x2F },       // lock bits: SPM is not allowed to write to the Boot Loader section.
 
   // ATmega328P
-  { { 0x1E, 0x95, 0x0F }, 
+  { { 0x1E, 0x95, 0x0F },
         0x7E00,               // start address
         atmega328_optiboot,   // loader image
         sizeof atmega328_optiboot,
@@ -217,7 +218,17 @@ const bootloaderType bootloaders [] PROGMEM =
         0x2F },       // lock bits: SPM is not allowed to write to the Boot Loader section.
 
   // ATmega328
-  { { 0x1E, 0x95, 0x14 }, 
+  { { 0x1E, 0x95, 0x14 },
+        0x7E00,               // start address
+        atmega328_optiboot,   // loader image
+        sizeof atmega328_optiboot,
+        0xFF,         // fuse low byte: external clock, max start-up time
+        0xDE,         // fuse high byte: SPI enable, boot into bootloader, 512 byte bootloader
+        0x05,         // fuse extended byte: brown-out detection at 2.7V
+        0x2F },       // lock bits: SPM is not allowed to write to the Boot Loader section.
+
+  // ATmega328PB
+  { { 0x1E, 0x95, 0x16 },
         0x7E00,               // start address
         atmega328_optiboot,   // loader image
         sizeof atmega328_optiboot,
@@ -227,7 +238,7 @@ const bootloaderType bootloaders [] PROGMEM =
         0x2F },       // lock bits: SPM is not allowed to write to the Boot Loader section.
 
   // ATmega1280
-  { { 0x1E, 0x97, 0x03 }, 
+  { { 0x1E, 0x97, 0x03 },
         0x1FC00,      // start address
   #if USE_ATMEGA1280
         optiboot_atmega1280_hex,
@@ -241,7 +252,7 @@ const bootloaderType bootloaders [] PROGMEM =
         0x2F },       // lock bits: SPM is not allowed to write to the Boot Loader section.
 
   // ATmega2560
-  { { 0x1E, 0x98, 0x01 }, 
+  { { 0x1E, 0x98, 0x01 },
         0x3E000,      // start address
   #if USE_ATMEGA2560
         atmega2560_bootloader_hex,// loader image
@@ -269,7 +280,7 @@ const bootloaderType bootloaders [] PROGMEM =
         0x2F },       // lock bits: SPM is not allowed to write to the Boot Loader section.
 
   // ATmega16U2
-  { { 0x1E, 0x94, 0x89 }, 
+  { { 0x1E, 0x94, 0x89 },
         0x3000,      // start address
   #if USE_ATMEGA16U2
         Arduino_COMBINED_dfu_usbserial_atmega16u2_Uno_Rev3_hex,// loader image
@@ -283,7 +294,7 @@ const bootloaderType bootloaders [] PROGMEM =
         0xCF },       // lock bits
 
   // ATmega32U4
-  { { 0x1E, 0x95, 0x87 }, 
+  { { 0x1E, 0x95, 0x87 },
         0x7000,      // start address
   #if USE_ATMEGA32U4
         leonardo_hex,// loader image
@@ -297,9 +308,9 @@ const bootloaderType bootloaders [] PROGMEM =
         0x2F },       // lock bits: SPM is not allowed to write to the Boot Loader section.
 
   // ATmega1284P family
-  
+
   // ATmega1284P
-  { { 0x1E, 0x97, 0x05 }, 
+  { { 0x1E, 0x97, 0x05 },
         0x1FC00,      // start address
   #if USE_ATMEGA1284
         optiboot_atmega1284p_hex,
@@ -313,9 +324,9 @@ const bootloaderType bootloaders [] PROGMEM =
         0x2F },       // lock bits: SPM is not allowed to write to the Boot Loader section.
 
   // Atmega8A family
-  
+
   // ATmega8A
-  { { 0x1E, 0x93, 0x07 }, 
+  { { 0x1E, 0x93, 0x07 },
         0x1C00,      // start address
   #if USE_ATMEGA8
         atmega8_hex,
@@ -353,25 +364,25 @@ bootloaderType currentBootloader;
 void writeBootloader ()
   {
   bool foundBootloader = false;
-  
+
   for (unsigned int j = 0; j < NUMITEMS (bootloaders); j++)
     {
-      
+
     memcpy_P (&currentBootloader, &bootloaders [j], sizeof currentBootloader);
-    
+
     if (memcmp (currentSignature.sig, currentBootloader.sig, sizeof currentSignature.sig) == 0)
       {
       foundBootloader = true;
       break;
       }  // end of signature found
     }  // end of for each signature
-    
+
   if (!foundBootloader)
     {
     Serial.println (F("No bootloader support for this device."));
     return;
     }
-    
+
   // if in the table, but with zero length, we need to enable a #define to use it.
   if (currentBootloader.loaderLength == 0)
     {
@@ -544,14 +555,14 @@ void getSignature ()
   readSignature (sig);
   for (byte i = 0; i < 3; i++)
     showHex (sig [i]);
-  
+
   Serial.println ();
 
   for (unsigned int j = 0; j < NUMITEMS (signatures); j++)
     {
-      
+
     memcpy_P (&currentSignature, &signatures [j], sizeof currentSignature);
-    
+
     if (memcmp (sig, currentSignature.sig, sizeof sig) == 0)
       {
       foundSig = j;
@@ -590,13 +601,13 @@ void loop ()
     {
     getSignature ();
     getFuseBytes ();
-  
+
     // if we found a signature try to write a bootloader
     if (foundSig != -1)
       writeBootloader ();
     stopProgramming ();
     }   // end of if entered programming mode OK
-    
+
 
   Serial.println (F("Type 'C' when ready to continue with another chip ..."));
   while (toupper (Serial.read ()) != 'C')
