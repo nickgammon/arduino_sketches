@@ -322,7 +322,7 @@ void showDirectory ()
 
   // open next file in root.  The volume working directory, vwd, is root
   while (file.openNext(sd.vwd(), O_READ)) {
-    file.getFilename(name);
+    file.getName(name,13);
     byte len = strlen (name);
     if (len > 4 && strcmp (&name [len - 4], ".HEX") == 0)
       {
