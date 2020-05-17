@@ -301,10 +301,12 @@ void initPins ()
 
   // set up 8 MHz timer on pin 9
   pinMode (CLOCKOUT, OUTPUT);
+#ifndef ARDUINO_ARCH_MEGAAVR
   // set up Timer 1
   TCCR1A = bit (COM1A0);  // toggle OC1A on Compare Match
   TCCR1B = bit (WGM12) | bit (CS10);   // CTC, no prescaling
   OCR1A =  0;       // output every cycle
+#endif
 
 
 
