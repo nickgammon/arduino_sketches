@@ -60,6 +60,7 @@ That will ensure that those directories now are using the same file.
       PAGEL   =  3,           // 13 (PD7)     
       BS2     =  4,           // 25 (PC2)     
       VCC     =  5,           // 7 and 20 (VCC and AVCC)
+      RESET   =  14,          //using a mega so below is not needed
   };  // end of other pins                  
                                             
   
