@@ -238,19 +238,62 @@ void writeFuse (const byte newValue, const byte whichFuse)
 bool startProgramming ()
   {
   Serial.println (F("Activating high-voltage PARALLEL programming mode."));
-
+  digitalWrite (VCC, HIGH);
   digitalWrite (PAGEL, LOW);
   digitalWrite (XA1, LOW);
   digitalWrite (XA0, LOW);
   digitalWrite (BS1, LOW);
   digitalWrite (BS2, LOW);
   // Enter programming mode
-  digitalWrite (VCC, HIGH);   // This brings /RESET to 12V after 40 uS by a transistor
+  digitalWrite (RESET, HIGH);   // This brings /RESET to 12V on seperate pin
   delayMicroseconds (10);
   digitalWrite (WR, HIGH);    // Read mode
   digitalWrite (OE, HIGH);    // Not output-enable
   delay(5);
+
   return true;
+  }
+
+bool startProgrammingAtmega64 ()
+  {
+  Serial.println (F("Activating high-voltage PARALLEL programming mode."));
+  digitalWrite (VCC, HIGH);
+  digitalWrite (RESET, LOW);
+  digitalWrite (PAGEL, LOW);
+  digitalWrite (XA1, LOW);
+  digitalWrite (XA0, LOW);
+  digitalWrite (BS1, LOW);
+  //digitalWrite (BS2, LOW); // this isn't in the datasheet?
+  // Enter programming mode
+  digitalWrite (RESET, HIGH);   // This brings /RESET to 12V after 40 uS by a transistor
+  delayMicroseconds (50);
+  digitalWrite (WR, HIGH);    // Read mode
+  digitalWrite (OE, HIGH);    // Not output-enable
+  delay(5);
+
+  return true;
+  }
+  
+
+
+bool fuseRecovery () {
+    stopProgramming (); //make sure nothing is on
+    delayMicroseconds (100);
+    Serial.println (F("Activating high-voltage fuse recovery PARALLEL programming mode."));
+    //different algorithm is used in this case
+    digitalWrite (PAGEL, LOW);
+    digitalWrite (XA1, LOW);
+    digitalWrite (XA0, LOW);
+    digitalWrite (BS1, LOW);
+    digitalWrite (BS2, LOW);
+    digitalWrite (RESET, HIGH);
+    digitalWrite (VCC, HIGH);   // This brings /RESET to 12V after 40 uS by a transistor    
+    delayMicroseconds (100);
+    eraseMemory ();
+    writeFuse (0xC1, lowFuse ); // writing the default clock settings for now
+    return true;
+}
+
  }  // end of  startProgramming
   
 void stopProgramming ()
