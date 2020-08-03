@@ -710,13 +710,21 @@ void loop ()
   getSignature ();
   getFuseBytes ();
 
-  // don't have signature? don't proceed
+  // don't have signature? don't proceed or try recovery
   if (foundSig == -1)
     {
-    Serial.println (F("Halted."));
-    stopProgramming ();
-    while  (true)
-      {}
+    Serial.println (F("Halted.Are you trying to recover a chip with an external clock set?"));
+    char response = Serial.read();
+    switch (response) {
+      case 'y':
+        fuseRecovery ();
+        break;
+      default: 
+        stopProgramming ();
+        while  (true)
+        {}
+     }
+
     }  // end of no signature
 
  // ask for verify or write
