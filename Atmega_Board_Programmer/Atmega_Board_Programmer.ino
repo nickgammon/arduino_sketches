@@ -1,7 +1,7 @@
 // Atmega chip programmer
 // Author: Nick Gammon
-// Date: 22nd May 2012
-// Version: 1.37
+// Date: 18th of May 2021
+// Version: 1.39
 
 // IMPORTANT: If you get a compile or verification error, due to the sketch size,
 // make some of these false to reduce compile size (the ones you don't want).
@@ -65,8 +65,9 @@ Tools -> Boards menu.
 // Version 1.36: Got rid of compiler warnings in IDE 1.6.7
 // Version 1.37: Got rid of compiler warnings in IDE 1.6.9, added more information about where bootloaders came from
 // Version 1.38: Added Atmega328PB to list of supported bootloaders
+// Version 1.39: Switched to Optiboot V8 for 328, 1280, 1284, 2560 and included atmega328_pro_8MHz (Bernhard Nebel)
 
-#define VERSION "1.38"
+#define VERSION "1.39"
 
 // make true to use the high-voltage parallel wiring
 #define HIGH_VOLTAGE_PARALLEL false
@@ -160,12 +161,14 @@ typedef struct {
 // For simplicity later one, we always include these two
 #include "bootloader_lilypad328.h"
 #include "bootloader_atmega328.h"
+#include "bootloader_atmega328_pro_8MHz.h"
 
 #if USE_ATMEGA168
   #include "bootloader_atmega168.h"
 #endif
 #if USE_ATMEGA2560
   #include "bootloader_atmega2560_v2.h"
+  #include "bootloader_atmega2560_optiboot.h"
 #endif
 #if USE_ATMEGA256RFR2
   #include "bootloader_atmega256rfr2_v1.0a.h"
@@ -415,11 +418,11 @@ void writeBootloader ()
       (currentBootloader.sig [2] == 0x0F || currentBootloader.sig [2] == 0x14)
       )
     {
-    Serial.println (F("Type 'L' to use Lilypad (8 MHz) loader, or 'U' for Uno (16 MHz) loader ..."));
+    Serial.println (F("Type 'L' to use Lilypad (8 MHz), '8' to use Pro8 (8MHz),  or 'U' for Uno (16 MHz) loader ..."));
     do
       {
       subcommand = toupper (Serial.read ());
-      } while (subcommand != 'L' && subcommand != 'U');
+      } while (subcommand != 'L' && subcommand != 'U' && subcommand != '8');
 
     if (subcommand == 'L')  // use internal 8 MHz clock
       {
@@ -430,10 +433,37 @@ void writeBootloader ()
       addr = 0x7800;
       len = sizeof ATmegaBOOT_168_atmega328_pro_8MHz_hex;
       }  // end of using the 8 MHz clock
-    else
+    else if (subcommand == '8') {
+      Serial.println (F("Using (Mini) Pro 8MHz loader."));
+      bootloader = atmega328_pro8_optiboot;
+      len = sizeof atmega328_pro8_optiboot;
+    }  else 
       Serial.println (F("Using Uno Optiboot 16 MHz loader."));
-     }  // end of being Atmega328P
+    }  // end of being Atmega328P
 
+
+  // Atmega2560
+  if (currentBootloader.sig [0] == 0x1E &&
+      currentBootloader.sig [1] == 0x98 &&
+      currentBootloader.sig [2] == 0x01)
+    {
+      Serial.println (F("Type 'M' to use Mega loader or 'O' for Optiboot loader (change protocol from 'wiring' to 'arduino!') ..."));
+      do
+	{
+	  subcommand = toupper (Serial.read ());
+	} while (subcommand != 'M' && subcommand != 'O');
+      
+      if (subcommand == 'O')  // use optiboot instead of standard loader
+	{
+	  Serial.println (F("Using Mega Optiboot loader."));
+	  bootloader = optiboot_atmega2560_hex;
+	  newhFuse = 0xD8;  //  1024 byte bootloader, SPI enabled
+	  addr = 0x3FC00;
+	  len = sizeof optiboot_atmega2560_hex;
+	}  // end of using the 8 MHz clock
+      else
+	Serial.println (F("Using Uno Optiboot 16 MHz loader."));
+    }  // end of being Atmega2560
 
   Serial.print (F("Bootloader address = 0x"));
   Serial.println (addr, HEX);

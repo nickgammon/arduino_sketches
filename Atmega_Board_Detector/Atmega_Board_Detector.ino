@@ -1,7 +1,7 @@
 // Atmega chip fuse detector
 // Author: Nick Gammon
-// Date: 19nd March 2017
-// Version: 1.20
+// Date: 18th of May 2021
+// Version: 1.21
 
 // Version 1.1 added signatures for Attiny24/44/84 (5 May 2012)
 // Version 1.2 added signatures for ATmeag8U2/16U2/32U2 (7 May 2012)
@@ -23,8 +23,9 @@
 // Version 1.18: Got rid of compiler warnings in IDE 1.6.7
 // Version 1.19: Added more signatures: ATmega168V, ATmega328PB, ATmega1284
 // Version 1.20: Added MD5 sum for Pro Mini Optiboot bootloader (19 March 2017 by Patrick Bouffel)
+// Version 1.21: Added MD5 sums for new optiboot V8 bootloaders and a guess about optiboot bootloaders (18 May 2021 by Bernhard Nebel)
 
-const char Version [] = "1.20";
+const char Version [] = "1.21";
 
 // make true to use the high-voltage parallel wiring
 #define HIGH_VOLTAGE_PARALLEL false
@@ -141,6 +142,14 @@ const char Sanguino_ATmegaBOOT_168_atmega644p   [] PROGMEM = "Sanguino_ATmegaBOO
 const char Sanguino_ATmegaBOOT_168_atmega1284p  [] PROGMEM = "Sanguino_ATmegaBOOT_168_atmega1284p";
 const char Sanguino_ATmegaBOOT_168_atmega1284p_8m [] PROGMEM = "Sanguino_ATmegaBOOT_168_atmega1284p_8m";
 const char Arduino_dfu_usbserial_atmega16u2_Uno_Rev3 [] PROGMEM = "Arduino-dfu-usbserial-atmega16u2-Uno-Rev3";
+const char optiboot_V8_atmega328                [] PROGMEM = "optiboot_V8.1_atmega328";
+const char optiboot_V8_atmega328_8mhz           [] PROGMEM = "optiboot_V8.1_atmega328_8mhz";
+const char optiboot_V8_atmega1280               [] PROGMEM = "optiboot_V8.1_atmega1280";
+const char optiboot_V8_atmega1284               [] PROGMEM = "optiboot_V8.1_atmega1284";
+const char optiboot_V8_atmega168                [] PROGMEM = "optiboot_V8.1_atmega168";
+const char optiboot_V8_atmega2560                [] PROGMEM = "optiboot_V8.1_atmega2560";
+
+
 
 // Signatures (MD5 sums) for above bootloaders
 const deviceDatabaseType deviceDatabase [] PROGMEM = 
@@ -182,7 +191,12 @@ const deviceDatabaseType deviceDatabase [] PROGMEM =
   { { 0xC1, 0x17, 0xE3, 0x5E, 0x9C, 0x43, 0x66, 0x5F, 0x1E, 0x4C, 0x41, 0x95, 0x44, 0x60, 0x47, 0xD5,  }, Sanguino_ATmegaBOOT_168_atmega1284p }, 
   { { 0x27, 0x4B, 0x68, 0x8A, 0x8A, 0xA2, 0x4C, 0xE7, 0x30, 0x7F, 0x97, 0x37, 0x87, 0x16, 0x4E, 0x21,  }, Sanguino_ATmegaBOOT_168_atmega1284p_8m }, 
   { { 0xD8, 0x8C, 0x70, 0x6D, 0xFE, 0x1F, 0xDC, 0x38, 0x82, 0x1E, 0xCE, 0xAE, 0x23, 0xB2, 0xE6, 0xE7,  }, Arduino_dfu_usbserial_atmega16u2_Uno_Rev3 }, 
-  { { 0x5B, 0xA4, 0x80, 0x2A, 0xC9, 0x1F, 0x82, 0x01, 0x2F, 0x0D, 0xDA, 0x8A, 0xE4, 0x91, 0xC3, 0x5A,  }, optiboot_atmega328 }, 
+  { { 0x81, 0x9F, 0x76, 0xA0, 0xCC, 0x96, 0x80, 0x4E, 0x1B, 0xEC, 0xAB, 0xD6, 0x7D, 0xFD, 0x28, 0x21, }, optiboot_V8_atmega328 },
+  { { 0xF9, 0xC7, 0x22, 0xF4, 0x1F, 0x1F, 0xD8, 0x5F, 0x8B, 0x36, 0x73, 0xA9, 0xBD, 0x9A, 0xDC, 0xC7, }, optiboot_V8_atmega328_8mhz },
+  { { 0xD3, 0x44, 0x46, 0x08, 0x38, 0x18, 0xC8, 0xBF, 0xAE, 0x48, 0x6C, 0x86, 0xA1, 0x44, 0xF5, 0x81, }, optiboot_V8_atmega1280 },
+  { { 0xAD, 0xB1, 0xD9, 0x4E, 0xD6, 0x51, 0x91, 0xD0, 0xD1, 0x5D, 0xB6, 0x36, 0x1A, 0xA6, 0x80, 0xAB, }, optiboot_V8_atmega1284 },
+  { { 0xCF, 0x94, 0x8A, 0xF3, 0x80, 0x33, 0x51, 0x10, 0xE3, 0xF4, 0xD6, 0x12, 0x29, 0x6F, 0xC9, 0xFC, }, optiboot_V8_atmega168 },
+  { { 0xB0, 0x30, 0xC3, 0x92, 0x80, 0x97, 0x69, 0x9D, 0x67, 0xAA, 0x06, 0xE9, 0xEE, 0xF6, 0x21, 0x95, }, optiboot_V8_atmega2560 },
   };
 
 // Print a string from Program Memory directly to save RAM 
@@ -279,7 +293,8 @@ void readBootloader ()
 
   md5_starts( &ctx );
 
-  while (len--)
+  unsigned int ilen = len;
+  while (ilen--)
     {
     mem = readFlash (addr++);
     if (mem != 0xFF)
@@ -312,10 +327,16 @@ void readBootloader ()
       break;
       }// end of for
     
-    if (!found)
+    if (!found) {
       Serial.println (F("Bootloader MD5 sum not known."));
+      if (len <= 512 || (len <= currentSignature.baseBootSize)) { // most probably optiboot
+	Serial.print(F("Most probably an optiboot bootloader, version: "));
+	Serial.print(readFlash(currentSignature.flashSize-1));
+	Serial.print(F("."));
+	Serial.println(readFlash(currentSignature.flashSize-2));
+      }
     }
-    
+    }
   } // end of readBootloader
 
 void readProgram ()
