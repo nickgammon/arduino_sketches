@@ -44,6 +44,7 @@ def main():
         0x1F000: 0x20000,
         0x1FC00: 0x20000,
         0x3E000: 0x40000,
+        0x3FC00: 0x40000,
     }
     if not loaderStart in end_addresses:
         print "Error: Unkown bootloader start address."
