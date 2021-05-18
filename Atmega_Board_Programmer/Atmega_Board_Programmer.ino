@@ -446,7 +446,6 @@ void writeBootloader ()
   if (currentBootloader.sig [0] == 0x1E &&
       currentBootloader.sig [1] == 0x98 &&
       currentBootloader.sig [2] == 0x01)
-    )
     {
       Serial.println (F("Type 'M' to use Mega loader or 'O' for Optiboot loader (change protocol from 'wiring' to 'arduino!') ..."));
       do
